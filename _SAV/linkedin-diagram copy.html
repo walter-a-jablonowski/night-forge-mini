@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Self-Improving Closed Loop</title>
+<style>
+  :root{
+    --bg:#9a9088; --panel:#161311; --panel2:#1d1816; --border:#322b25;
+    --grey:#9a9088; --grey-dim:#6f675f;
+    --orange:#ff7a1a; --red:#ff3d2e; --yellow:#ffce33; --text:#f4efe7;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(700px 420px at 50% -8%, rgba(255,122,26,.12), transparent 60%),
+      radial-gradient(600px 400px at 100% 110%, rgba(255,61,46,.08), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:24px 12px;
+    min-height:100vh;
+  }
+  /* the whole diagram is a 600px frame; content sits inside, inset by the padding */
+  .wrap{
+    max-width:600px;margin:0 auto;padding:32px;
+    background-color: #0a0908;
+  }
+
+  .kicker{
+    font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--yellow);font-weight:700;margin-bottom:12px;
+  }
+  h1{
+    font-size:clamp(30px,8vw,42px);line-height:1.04;font-weight:800;letter-spacing:-.02em;
+    background:linear-gradient(100deg,#fff 8%,var(--yellow) 42%,var(--orange) 72%,var(--red));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    margin-bottom:12px;
+  }
+  .sub{color:var(--grey);font-size:15.5px;line-height:1.5}
+
+  /* ---- vertical flow ---- */
+  .flow{margin:34px 0 0;display:flex;flex-direction:column;align-items:center}
+  .step{
+    width:100%;position:relative;display:flex;align-items:center;gap:16px;
+    background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--border);border-radius:15px;padding:16px 18px;
+    box-shadow:0 8px 24px rgba(0,0,0,.5);overflow:hidden;
+  }
+  .step::before{
+    content:"";position:absolute;inset:0 auto 0 0;width:3px;
+    background:linear-gradient(180deg,var(--yellow),var(--orange),var(--red));opacity:.9;
+  }
+  .badge{
+    flex:0 0 auto;width:40px;height:40px;border-radius:11px;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:18px;color:#1a1208;
+    background:linear-gradient(135deg,var(--yellow),var(--orange) 55%,var(--red));
+    box-shadow:0 4px 16px rgba(255,122,26,.45);
+  }
+  .txt h3{font-size:15px;letter-spacing:.05em;font-weight:800;text-transform:uppercase;margin-bottom:3px}
+  .txt p{font-size:13.5px;line-height:1.4;color:var(--grey)}
+
+  .step.gate{border-color:#5a3128}
+  .step.gate::before{background:linear-gradient(180deg,var(--orange),var(--red))}
+  .step.gate .badge{background:linear-gradient(135deg,var(--orange),var(--red))}
+  .step.gate .txt h3{color:#ff7e5f}
+
+  .arrow{
+    color:var(--orange);font-size:20px;line-height:1;font-weight:700;
+    padding:7px 0;text-shadow:0 0 12px rgba(255,122,26,.6);
+  }
+
+  /* ---- artifact store band ---- */
+  .store{
+    margin-top:18px;border:1px dashed #4a3f36;border-radius:14px;
+    background:linear-gradient(180deg,rgba(255,206,51,.05),rgba(255,61,46,.04));
+    padding:15px 18px;text-align:center;
+  }
+  .store .t{font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:12.5px;color:var(--yellow)}
+  .store .d{color:var(--grey);font-size:12.5px;margin-top:4px}
+  .store .note{color:var(--grey-dim);font-size:11px;margin-top:8px;letter-spacing:.03em}
+
+  /* ---- loop back ---- */
+  .loopback{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:20px}
+  .loopback .line{flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--orange) 0 8px,transparent 8px 16px);opacity:.5}
+  .loopback .pill{
+    display:inline-flex;align-items:center;gap:9px;flex:0 0 auto;
+    border:1px solid #5a3128;border-radius:999px;padding:9px 17px;
+    background:linear-gradient(180deg,var(--panel2),var(--panel));
+    color:var(--text);font-size:13px;font-weight:600;
+    box-shadow:0 0 28px rgba(255,61,46,.14);
+  }
+  .loopback .pill b{color:var(--orange)}
+  .loopback .cyc{font-size:17px;color:var(--yellow)}
+
+  /* ---- legend ---- */
+  .legend{display:flex;flex-direction:column;gap:9px;margin-top:24px}
+  .legend div{display:flex;align-items:center;gap:9px;color:var(--grey);font-size:12.5px}
+  .dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
+  .dot.y{background:var(--yellow);box-shadow:0 0 10px var(--yellow)}
+  .dot.r{background:var(--red);box-shadow:0 0 10px var(--red)}
+
+  .foot{margin-top:28px;text-align:center;color:var(--grey-dim);font-size:11.5px;letter-spacing:.05em}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="kicker">A self-improving system</div>
+    <h1>The closed loop</h1>
+    <p class="sub">Capture work, judge it against the goal, propose the next move, act
+    behind a safety gate — and let every run make the next one smarter.</p>
+
+    <div class="flow">
+      <div class="step"><div class="badge">1</div><div class="txt"><h3>Capture</h3><p>Connector pulls in new artifacts</p></div></div>
+      <div class="arrow">↓</div>
+      <div class="step"><div class="badge">2</div><div class="txt"><h3>Ingest</h3><p>Assemble recent runs + relevant history</p></div></div>
+      <div class="arrow">↓</div>
+      <div class="step"><div class="badge">3</div><div class="txt"><h3>Analyze</h3><p>Measure what happened vs. the goal</p></div></div>
+      <div class="arrow">↓</div>
+      <div class="step"><div class="badge">4</div><div class="txt"><h3>Propose</h3><p>Next actions, each tagged risk + reversible</p></div></div>
+      <div class="arrow">↓</div>
+      <div class="step gate"><div class="badge">5</div><div class="txt"><h3>Gate</h3><p>Safe &amp; reversible → auto-run · else a human approves</p></div></div>
+      <div class="arrow">↓</div>
+      <div class="step"><div class="badge">6</div><div class="txt"><h3>Improve</h3><p>Outcomes feed the next run</p></div></div>
+    </div>
+
+    <div class="store">
+      <div class="t">⟱ &nbsp; Artifact Store &nbsp; ⟱</div>
+      <div class="d">Append-only — every input, decision &amp; outcome, with its reasoning</div>
+      <div class="note">THE AUDIT LOG AND THE MEMORY ARE THE SAME THING · NOTHING IS OVERWRITTEN</div>
+    </div>
+
+    <div class="loopback">
+      <span class="line"></span>
+      <span class="pill"><span class="cyc">⟳</span> <span><b>Improve</b> → the next run starts smarter</span></span>
+      <span class="line"></span>
+    </div>
+
+    <div class="legend">
+      <div><span class="dot y"></span> Reversible &amp; allow-listed → runs autonomously</div>
+      <div><span class="dot r"></span> Irreversible → blocked from auto-run, waits for a human</div>
+    </div>
+
+    <div class="foot">HUMANS AT THE EDGE — GUIDING &amp; APPROVING, NOT ROUTING EVERY MESSAGE</div>
+  </div>
+</body>
+</html>

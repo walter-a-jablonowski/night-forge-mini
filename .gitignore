@@ -1,0 +1,9 @@
+# runtime artifacts
+skb/data/log.jsonl
+skb/data/kb/
+__pycache__/
+*.pyc
+.venv/
+
+# secrets (keep .env.example tracked)
+.env
