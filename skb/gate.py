@@ -43,7 +43,13 @@ def decide(store: Store, kb: KnowledgeBase, *, run_id: str, action: dict,
     payload = dict(action.get("payload", {}))
     if edits:
         payload.update(edits)
-    result = kb.run(name, action["target"], payload)
+
+    # Wrap run(): any exception becomes an `error` outcome + stops this branch
+    # (idea_2 "Failure handling" — the loop never half-commits silently).
+    try:
+        result = kb.run(name, action["target"], payload)
+    except Exception as e:  # noqa: BLE001 - last line of defense; reason is logged
+        result = {"status": "error", "detail": f"{type(e).__name__}: {e}"}
 
     store.append(Record(run_id=run_id, domain=kb_domain(action), type=OUTCOME,
                          parent_id=aid,
