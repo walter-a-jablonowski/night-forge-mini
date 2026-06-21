@@ -1,0 +1,31 @@
+{
+  "_comment": "KB domain — ready-to-run deploy config. Provider/model + paths + connector source + the operator's allow_list. The domain definition (goal, metric, actions) lives in the domain_pack code. Edit provider keys via .env.",
+
+  "provider": "openrouter",
+  "providers": {
+    "openrouter": {
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model": "google/gemini-3-flash-preview"
+    },
+    "gemini": {
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+      "api_key_env": "GEMINI_API_KEY",
+      "model": "gemini-flash-latest"
+    },
+    "ollama": {
+      "base_url": "http://localhost:11434/v1",
+      "api_key_env": "OLLAMA_API_KEY",
+      "model": "llama3.1"
+    }
+  },
+
+  "paths": {
+    "log": "data/log.jsonl",
+    "kb": "data/kb"
+  },
+  "connector": { "source": "data/inbox" },
+
+  "allow_list": ["add_entry", "flag_contradiction", "mark_stale"],
+  "recent_runs": 5
+}

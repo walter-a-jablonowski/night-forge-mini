@@ -1,6 +1,9 @@
 # runtime artifacts
 skb/data/log.jsonl
 skb/data/kb/
+# blank/domain runtime outputs (demo inbox stays tracked)
+domains/*/data/log.jsonl
+domains/*/data/kb/
 __pycache__/
 *.pyc
 .venv/

@@ -1,0 +1,3 @@
+# Core runtime deps. Only needed for real LLM calls; `--fake-llm` runs on stdlib alone.
+# A domain pack may add its own requirements.txt; merge them at deploy.
+openai>=1.40.0

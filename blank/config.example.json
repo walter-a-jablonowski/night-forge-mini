@@ -1,0 +1,28 @@
+{
+  "_comment": "Blank-core infra template. The DOMAIN (goal, metric, connector impl, actions) lives in the pack, not here. When you drop in a domain pack, use ITS config.json (which adds connector params + domain paths + a recommended allow_list). Edit provider keys via .env.",
+
+  "provider": "openrouter",
+  "providers": {
+    "openrouter": {
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model": "google/gemini-3-flash-preview"
+    },
+    "gemini": {
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+      "api_key_env": "GEMINI_API_KEY",
+      "model": "gemini-flash-latest"
+    },
+    "ollama": {
+      "base_url": "http://localhost:11434/v1",
+      "api_key_env": "OLLAMA_API_KEY",
+      "model": "llama3.1"
+    }
+  },
+
+  "paths": { "log": "data/log.jsonl" },
+  "connector": {},
+
+  "allow_list": [],
+  "recent_runs": 5
+}
