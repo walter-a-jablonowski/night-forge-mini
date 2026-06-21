@@ -47,24 +47,6 @@ in reality (token usage): smarter retrieval (feed the most relevant context, the
 Next
 ----------------------------------------------------------
 
-The intention wasn't to have multiple domain packages in one app as you said earlier. Instead we want a reusable blank system that has no use case, then we plug excatly one domain pack in and deploy it like this.
-
-I think we should skip the BUILD.md idea and make a system that has all reuasble parts and one demo domain pack.
-
-Read domain-pack-template.md again. Can we use the /skb implementtion as a basis?
-
-Outcome: /blank implementation and /domains/kb seperately. Then I could just merge these 2 in a new folder to get the running system.
-
-One thing I modified: config.json and /data originally were in the project base folder of the project, I moved them to /skb but I am unsure what the right location is for python and a multi domain system. Same for .env, requirements.txt and the readme.
-
-
-- deferred-by-design
-  - Metric-as-data is half-wired (the "B" you chose to defer). The measured metric value is recorded in every analysis record — that's the load-bearing behavior for later drift/ROI, and it's ✅. But the metric definition is hardcoded in loop.py; config.json's metric string is never read. Genuinely a multi-domain concern, per your call.
-  - Bounded context is partial. recent_findings is correctly capped at recent_runs ✅, but kb_index loads the whole KB rather than a "relevant slice." Fine at v1 scale; diverges from the spec's "never the full store." A retrieval/domain-pack concern.
-- "edit" on approval isn't surfaced in the CLI. decide()/Engine.approve plumb an edits param, but the CLI exposes only approve/reject. The spec's concrete CLI list is exactly inbox/approve/reject, so this matches the contract — the prose's "approve / edit / reject" is plumbed-but-not-exposed (forward-compat for a later UI).
-- cosmetic: connector.source is ignored (build() uses paths.inbox) — same shape as #1, resolve during multi-domain
-
-
 - [ ] Self improving homepage
   - Simple web design => expands to better
   - Layout, site elements and content improves
@@ -87,6 +69,16 @@ Done
 ----------------------------------------------------------
 
 ### 2026-06-21
+
+- [x] The intention wasn't to have multiple domain packages in one app as you said earlier. Instead we want a reusable blank system that has no use case, then we plug excatly one domain pack in and deploy it like this.
+
+  I think we should skip the BUILD.md idea and make a system that has all reuasble parts and one demo domain pack.
+
+  Read domain-pack-template.md again. Can we use the /skb implementtion as a basis?
+
+  Outcome: /blank implementation and /domains/kb seperately. Then I could just merge these 2 in a new folder to get the running system.
+
+  One thing I modified: config.json and /data originally were in the project base folder of the project, I moved them to /skb but I am unsure what the right location is for python and a multi domain system. Same for .env, requirements.txt and the readme.
 
 - [x] Does /skb implement all from idea_2.md now?
 
