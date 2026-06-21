@@ -56,8 +56,10 @@ def _run_once(eng: Engine) -> int:
     print("proposal   :")
     for item in r["ran"]:
         a = item["action"]
-        d = item["res"].get("result", {}).get("detail", "")
-        print(f"  {a['action_id']}  {a['name']:<18} [{a['risk_level']},rev={a['reversible']}]  -> AUTO-RAN ok  {d}")
+        res = item["res"].get("result", {})
+        status = res.get("status", "ok")
+        verb = "AUTO-RAN ok" if status == "ok" else "AUTO-RAN FAILED"
+        print(f"  {a['action_id']}  {a['name']:<18} [{a['risk_level']},rev={a['reversible']}]  -> {verb}  {res.get('detail','')}")
     for a in r["pending"]:
         print(f"  {a['action_id']}  {a['name']:<18} [{a['risk_level']},rev={a['reversible']}]  -> PENDING (needs approval)")
     if r["pending"]:
@@ -86,8 +88,13 @@ def _verdict(res: dict, word: str) -> int:
         print(f"error: {res['reason']}")
         return 1
     a = res["action"]
-    ran = res["res"].get("ran")
-    tail = f" -> ran ({res['res'].get('result', {}).get('detail','')})" if ran else ""
+    inner = res["res"]
+    if inner.get("ran"):
+        result = inner.get("result", {})
+        verb = "ran ok" if result.get("status", "ok") == "ok" else "ran FAILED"
+        tail = f" -> {verb} ({result.get('detail','')})"
+    else:
+        tail = ""
     print(f"{a['action_id']} {word} [logged under {res['run_id']}]{tail}")
     return 0
 
