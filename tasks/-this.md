@@ -30,14 +30,12 @@ Orginal idea vs v1
 | "Every important action should produce an artifact the intelligence can learn from and self-improve" (2:36–2:42) | ✅ append-only artifact store; next run ingests it |
 | "Status, decisions, and outcomes continuously captured and fed back" (4:27–4:31) | ✅ exactly the input/decision/outcome records |
 | Concrete example: engineering sprint planning → analyze what shipped vs. needs → propose accurate sprint plans (3:00–3:42) | ✅ named as v1's example domain |
-| "Provide models with as much context as an employee" (4:13–4:15) | see below -⚠️ v1 bounds context (token reality) — pragmatic narrowing |
+| "Provide models with as much context as an employee" (4:13–4:15) | ⚠️ v1 bounds context (token reality); relevant-slice retrieval only half-done → bounded-retrieval.md |
 | The sprint example's sources: Linear + all Slack channels + customer feedback/Pylon/GitHub + Notion/Google docs + sales calls + standup recordings (3:06–3:19) | ⚠️ v1 = one connector. Even the video's flagship example is multi-source; v1's instance is thinner |
 | AI notetaker, minimize DMs/emails, agents in all channels (2:45–2:51) | ❌ deferred → multi-channel-capture.md |
 | Dashboards across everything — revenue/sales/eng/hiring/ops (2:54–2:58) | ❌ deferred → dashboards.md |
-| "AI = the operating system the company runs on," loops everywhere (1:17–1:39) | ❌ v1 = one domain (company-wide/registry deferred) |
-| Dashboards across everything — revenue/sales/eng/hiring/ops (2:54–2:58) | ❌ deferred → dashboards.md |
 | Software factories: spec+tests → agents write code, iterate to threshold (4:42–5:47) | ❌ deferred → software-factory.md |
-| "AI = the operating system the company runs on," loops everywhere (1:17–1:39) | ❌ v1 = one domain (company-wide/registry deferred) |
+| "AI = the operating system the company runs on," loops everywhere (1:17–1:39) | ⚠️ now blank core + pluggable domain pack — one domain per deploy (domain-pack packaging done); many loops in one app still out of scope |
 | Org model: humans at edge, no middle management, IC/DRI/AI-founder, token-maxing, high API bill (6:08–8:53) | ➖ out of scope — company philosophy, not a system to build |
 
 Provide models with as much context as an employee: basically means LLM gets all context a company has
@@ -52,6 +50,17 @@ Next
 
 - [ ] What happens when domain pack has own requirements?
 - [ ] Check backlog, what should we add? (see also above)
+  Ranked — do top-down (effort in parens):
+  1. bounded-retrieval (S) — finish idea_2's "never the full store"; KB context still loads the whole index. Half-done v1 gap.
+  2. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped.
+  3. cost logging (S, roi-measurement) — per-run token/$ visibility; full ROI attribution comes later (L).
+  4. approval-ui (S read-only) — web inbox over the log; lowers the cost of keeping a human at the gate.
+  5. data-governance (S first step) — scoped read-only creds per connector; do when a 2nd connector lands.
+  6. autonomous-actions (M) — earned autonomy (risk classifier + rollback) once hand-curating the allow-list hurts.
+  7. drift-detection (L) — needs accumulated metric history first.
+  8. multi-channel-capture (L) — many integrations + consent.
+  9. dashboards (L) — only pays off with multiple domains.
+  10. software-factory (XL) — separate, huge specialization.
 
 - [ ] Self improving homepage
   - Simple web design => expands to better
