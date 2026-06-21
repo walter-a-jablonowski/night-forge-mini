@@ -47,6 +47,30 @@ in reality (token usage): smarter retrieval (feed the most relevant context, the
 Next
 ----------------------------------------------------------
 
+I want to be able to make multiple different systems with idea_2.md.
+
+Variant 1: see tasks/backlog/domain-pack-template.md
+
+Variant 2: We extract the inintal project idea "knowledge base" from idea_2.md and put it in a BUILD.md so that idea_2.md is resusable and we could write multiple BUILD.md files. One BUILD-?.md plus idea_2.md is used to implement a specialized system.
+
+Or something different. Wnat would you recommend?
+
+
+The intention wasn't to have multiple domain packages in one app. Instead have one blank system that has no use case, then we plug excatly one domain pack in and deploy it like this.
+
+I think we should skip the BUILD.md idea and make a system that has all reuasble parts and one demo domain pack.
+
+Have a look at idea_2,md, domain-pack-template.md and the /sbk implemetaion again. How would you recommend to implement that? Can we use the /skb implementtion as a basis () or build from scratch?
+
+Outcome: /blank implementation and /domains/kb seperately. THen I could just merge these 2 in a new folder to get the running system.
+
+Are config.json and /data in the right place? Originally they were in the project bas folder, I moved them to /skb but I am unsure what is the right location for a multi domain system. Same for .env, requirements.txt and the readme.
+
+- [ ] Self improving homepage
+  - Simple web design => expands to better
+  - Layout, site elements and content improves
+  - Must have content improves
+  - Constraints: e.g. logos, colors, ... for CI
 - [-] Maybe move config.json and /data out again (if it is like this in python)
 - [ ] Maybe verify we have all from idea_2
 - [ ] Nice CLI

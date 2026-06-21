@@ -1,6 +1,6 @@
 # Software Factory (Spec + Tests → Agent-Built Code)
 
-**What:** Specialization where humans write specs + scenario validations and agents
+**What:** Specialization where humans write spec + scenario validations and agents
 generate/iterate implementation until tests pass at a satisfaction threshold.
 End state: repo of specs + test harnesses, code is the agent's job.
 
