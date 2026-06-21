@@ -1,13 +1,15 @@
 # Bounded Retrieval — relevant-slice context (finish idea_2's "bounded context")
 
-**Partially in v1.** `idea_2.md` (Running v1 → *Bounded context*) requires: *"Ingest
-assembles recent N runs + same-domain relevant slice, never the full store. History grows;
-the context window doesn't."* v1 does the **history** half but not the **slice** half:
+**Status: S done (keyword slice). M (embeddings) remains.** `idea_2.md` (Running v1 →
+*Bounded context*) requires: *"Ingest assembles recent N runs + same-domain relevant slice,
+never the full store. History grows; the context window doesn't."* Both halves are now bounded:
 
 - ✅ Generic history is bounded — the core feeds `recent_findings[-recent_runs:]`.
-- ❌ Domain context is the **full** KB — the KB pack's `analyze` calls `kb.index()`, which
-  returns *every* entry. As the KB grows, this slice grows without bound — the opposite of
-  "the context window doesn't [grow]."
+- ✅ Domain context is now a **bounded relevant slice** — the KB pack's `analyze` feeds the
+  model only the top `kb_context_max` (default 20, config-tunable) entries by keyword overlap
+  with the incoming snippets (`_relevant_slice` in `domain_pack/analyze.py`). Context size is
+  capped regardless of KB size. (`--fake-llm` routing still uses the full id set — no model,
+  no token budget.)
 
 **Why it's safe to defer:** at v1 scale the KB is small, so the full index is cheap and is
 the simplest correct thing. Smarter retrieval (rank/select the most relevant entries for the
@@ -20,12 +22,13 @@ So retrieval can be upgraded entirely within a pack:
 - The pack decides what domain context to add (today: the whole index; later: a top-k slice).
 
 **Adds later:**
-1. **S** — cap the index (most-recent / top-N) or a keyword slice keyed to the incoming
-   snippets' terms, so context size is bounded regardless of KB size.
-2. **M** — embedding retrieval (top-k by similarity to the new snippets), optionally a shared
-   retrieval helper in core that any pack can call.
+1. ✅ **S (done)** — keyword slice keyed to the incoming snippets' terms, capped at
+   `kb_context_max`, so context size is bounded regardless of KB size.
+2. **M (remaining)** — embedding retrieval (top-k by *semantic* similarity to the new
+   snippets, beyond exact keyword overlap), optionally a shared retrieval helper in core that
+   any pack can call.
 
-**Effort:** S (cap / keyword slice) → M (embedding retrieval).
+**Effort:** S (cap / keyword slice) ✅ → M (embedding retrieval).
 
 **Note:** `idea_2.md` lists bounded context as a v1 item (not under "Explicitly NOT in v1").
 This file tracks finishing the unimplemented *relevant-slice* half; decide whether to also

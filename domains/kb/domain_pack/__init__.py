@@ -22,9 +22,10 @@ def build_pack(cfg: Config) -> Pack:
     source = cfg.resolve(cfg.connector.get("source", "data/inbox"))
     connector = TextFolderConnector("text-folder", source)
     actions = build_actions(kb)
+    context_max = int(cfg.get("kb_context_max", 20))  # bound the KB context fed to the model
 
     def analyze(model, *, goal, snippets, recent_findings):
-        return analyze_mod.analyze(model, kb=kb, goal=goal,
-                                   snippets=snippets, recent_findings=recent_findings)
+        return analyze_mod.analyze(model, kb=kb, goal=goal, snippets=snippets,
+                                   recent_findings=recent_findings, context_max=context_max)
 
     return Pack(domain=DOMAIN, goal=GOAL, connector=connector, actions=actions, analyze=analyze)

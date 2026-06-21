@@ -51,7 +51,7 @@ Next
   
   by effort in parens
   
-  1. bounded-retrieval (S) — finish idea_2's "never the full store"; KB context still loads the whole index. Half-done v1 gap.
+  1. [x] bounded-retrieval — DONE (S): KB context now a bounded keyword slice (kb_context_max, default 20). M (embeddings) remains in backlog.
   2. stale-edit-guard (S) — prevent silent lost-update: approving a stale held edit_entry overwrites intervening changes. Optimistic-concurrency check.
   3. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped.
   4. cost logging (S, roi-measurement) — per-run token/$ visibility; full ROI attribution comes later (L).

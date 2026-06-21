@@ -27,5 +27,6 @@
   "connector": { "source": "data/inbox" },
 
   "allow_list": ["add_entry", "flag_contradiction", "mark_stale"],
-  "recent_runs": 5
+  "recent_runs": 5,
+  "kb_context_max": 20
 }

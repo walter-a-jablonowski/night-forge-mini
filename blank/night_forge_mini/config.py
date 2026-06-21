@@ -29,6 +29,10 @@ class Config:
         """Connector params/creds for the pack to wire its connector (e.g. source path)."""
         return self.raw.get("connector", {})
 
+    def get(self, key: str, default: Any = None) -> Any:
+        """Generic read for pack-specific settings (e.g. kb_context_max)."""
+        return self.raw.get(key, default)
+
     def path(self, key: str) -> Path:
         return self.resolve(self.raw["paths"][key])
 

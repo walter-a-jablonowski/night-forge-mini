@@ -4,9 +4,15 @@ The pack's analyze owns BOTH the ingest-context (the KB index) AND the metric
 measurement for this domain — the blank core just records whatever metric it returns.
 Real mode asks the model for a JSON proposal; `--fake-llm` mode is deterministic so the
 loop runs offline. Both return the same structure.
+
+Bounded context (idea_2 "never the full store"): the model sees only a **relevant slice**
+of the KB — the top `context_max` entries by keyword overlap with the incoming snippets —
+so context size is capped no matter how large the KB grows. (Recent findings are already
+bounded by the core's `recent_runs`.)
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from night_forge_mini.records import new_id
@@ -27,15 +33,17 @@ Prefer add_entry for genuinely new information; reuse existing ids (from the ind
 
 
 def analyze(model, *, kb: KnowledgeBase, goal: str, snippets: list[dict],
-            recent_findings: list[str]) -> dict[str, Any]:
+            recent_findings: list[str], context_max: int = 20) -> dict[str, Any]:
     kb_index = kb.index()
 
     if model.fake:
+        # fake routing needs the full id set (add vs edit), not a slice — no model, no token budget.
         actions = _fake_actions(kb_index, snippets)
         finding = f"{len(snippets)} new snippet(s); {len(actions)} proposed [fake-llm]"
         model_label = "fake-llm"
     else:
-        user = _render_context(goal, kb_index, snippets, recent_findings)
+        context_index = _relevant_slice(kb_index, snippets, context_max)
+        user = _render_context(goal, context_index, snippets, recent_findings, total=len(kb_index))
         result = model.complete_json(SYSTEM.format(goal=goal, actions=sorted(ACTIONS)), user)
         actions = _normalize(result.get("actions", []))
         finding = str(result.get("finding") or "")
@@ -90,9 +98,31 @@ def _normalize(actions: Any) -> list[dict]:
     return out
 
 
-def _render_context(goal: str, kb_index, snippets, recent_findings) -> str:
+_TOKEN = re.compile(r"[a-z0-9]+")
+
+
+def _tokens(text: str) -> set[str]:
+    return {t for t in _TOKEN.findall(text.lower()) if len(t) >= 3}
+
+
+def _relevant_slice(kb_index: list[dict], snippets: list[dict], limit: int) -> list[dict]:
+    """Bounded context: the top `limit` KB entries by keyword overlap with the incoming
+    snippets, so context size is capped regardless of KB size (idea_2 "never the full
+    store"). Under the cap (or limit <= 0), returns the whole index."""
+    if limit <= 0 or len(kb_index) <= limit:
+        return kb_index
+    q = _tokens(" ".join(s.get("text", "") for s in snippets))
+    ranked = sorted(kb_index, key=lambda e: len(q & _tokens(f"{e['title']} {e['preview']}")),
+                    reverse=True)  # stable: ties keep index() order
+    return ranked[:limit]
+
+
+def _render_context(goal: str, kb_index, snippets, recent_findings, total: int | None = None) -> str:
+    head = "CURRENT KB INDEX"
+    if total is not None and len(kb_index) < total:
+        head += f" (relevant slice: {len(kb_index)} of {total})"
     idx = "\n".join(f"- {e['id']}: {e['title']} — {e['preview']}" for e in kb_index) or "(empty)"
     snips = "\n\n".join(f"[{s['id']} from {s['source']}]\n{s['text']}" for s in snippets)
     recent = "\n".join(f"- {f}" for f in recent_findings) or "(none)"
-    return (f"GOAL: {goal}\n\nCURRENT KB INDEX:\n{idx}\n\n"
+    return (f"GOAL: {goal}\n\n{head}:\n{idx}\n\n"
             f"RECENT FINDINGS:\n{recent}\n\nNEW SNIPPETS:\n{snips}")
