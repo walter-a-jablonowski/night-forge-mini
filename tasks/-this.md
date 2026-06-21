@@ -45,20 +45,13 @@ in reality (token usage): smarter retrieval (feed the most relevant context, the
 Next
 ----------------------------------------------------------
 
-- [-] Maybe move config.json and /data out again (if it is like this in python)
-- [x] Maybe verify we have all from idea_2
+- Alternative running methods
 
-- [ ] What happens when domain pack has own requirements?
-- [ ] No stop: python -m night_forge_mini approve <id>
-  - only the one action is on halt
-  - when approved the next run does it
-
-    $ run-once        # auto-runs what it can, parks the rest as pending, EXITS (shell returns)
-    $ inbox           # (optional) see what's held
-    $ approve <id>    # runs just that held action, logs decision+outcome, EXITS
-    $ approve <id2>   # each held action approved independently
-
-- [ ] Try nice CLI
+  - Currently: via single CLI commands only
+  - Endless loop waiting for events? This might be neccessary for some use cases.
+  - Beside cli what useful methods of invocing the system should be implemented?
+  
+  - [ ] Try nice CLI
 
 - [ ] Check backlog, what should we add? (see also above)
   
@@ -69,12 +62,13 @@ Next
   3. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped.
   4. cost logging (S, roi-measurement) — per-run token/$ visibility; full ROI attribution comes later (L).
   5. approval-ui (S read-only) — web inbox over the log; lowers the cost of keeping a human at the gate.
-  6. data-governance (S first step) — scoped read-only creds per connector; do when a 2nd connector lands.
-  7. autonomous-actions (M) — earned autonomy (risk classifier + rollback) once hand-curating the allow-list hurts.
-  8. drift-detection (L) — needs accumulated metric history first.
-  9. multi-channel-capture (L) — many integrations + consent.
-  10. dashboards (L) — only pays off with multiple domains.
-  11. software-factory (XL) — separate, huge specialization.
+  6. run-triggers/ (S→M) — alternative invocation: scheduler/daemon, fs-watch, HTTP API, webhook, library. Start with scheduler-daemon (S); unattended needs a pending-notification (pairs with approval-ui).
+  7. data-governance (S first step) — scoped read-only creds per connector; do when a 2nd connector lands.
+  8. autonomous-actions (M) — earned autonomy (risk classifier + rollback) once hand-curating the allow-list hurts.
+  9. drift-detection (L) — needs accumulated metric history first.
+  10. multi-channel-capture (L) — many integrations + consent.
+  11. dashboards (L) — only pays off with multiple domains.
+  12. software-factory (XL) — separate, huge specialization.
 
 - [ ] Self improving homepage
   - Simple web design => expands to better
@@ -115,6 +109,9 @@ Done
   Variant 2: We extract the inintal project idea "knowledge base" from idea_2.md and put it in a BUILD.md so that idea_2.md is resusable and we could write multiple BUILD.md files. One BUILD-?.md plus idea_2.md is used to implement a specialized system.
 
   Or something different. Wnat would you recommend?
+
+- [-] Maybe move config.json and /data out again (if it is like this in python)
+- [x] Maybe verify we have all from idea_2
 
 ### 2026-06-15
 
