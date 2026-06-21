@@ -52,7 +52,7 @@ Next
   by effort in parens
   
   1. [x] bounded-retrieval — DONE (S): KB context now a bounded keyword slice (kb_context_max, default 20). M (embeddings) remains in backlog.
-  2. stale-edit-guard (S) — prevent silent lost-update: approving a stale held edit_entry overwrites intervening changes. Optimistic-concurrency check.
+  2. [x] stale-edit-guard — DONE (S): edit_entry stamps a body fingerprint at propose; approval refuses (error outcome) if the body changed since. No lost-update.
   3. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped.
   4. cost logging (S, roi-measurement) — per-run token/$ visibility; full ROI attribution comes later (L).
   5. approval-ui (S read-only) — web inbox over the log; lowers the cost of keeping a human at the gate.

@@ -49,6 +49,8 @@ def analyze(model, *, kb: KnowledgeBase, goal: str, snippets: list[dict],
         finding = str(result.get("finding") or "")
         model_label = model.label()
 
+    _stamp_edit_base(kb, actions)  # stale-edit guard: fingerprint each proposed edit_entry
+
     # Metric measured at Analyze (before acting) — this is the pack's job, not the core's.
     metric = {"kb_entries": kb.count(), "stale": kb.stale_count(), "incoming_new": len(snippets)}
     return {"finding": finding, "actions": actions, "metric": metric, "model": model_label}
@@ -79,6 +81,15 @@ def _fake_actions(kb_index: list[dict], snippets: list[dict]) -> list[dict]:
                 "payload": {"title": first[:80], "body": s["text"], "source": s["source"]},
             })
     return actions
+
+
+def _stamp_edit_base(kb: KnowledgeBase, actions: list[dict]) -> None:
+    """Record the current body fingerprint on each proposed edit_entry, so `edit_entry` can
+    refuse a stale overwrite at approval time (optimistic concurrency). See stale-edit-guard."""
+    for a in actions:
+        if a.get("name") == "edit_entry" and a.get("target"):
+            a.setdefault("payload", {})
+            a["payload"].setdefault("base", kb.fingerprint(a["target"]))
 
 
 def _normalize(actions: Any) -> list[dict]:

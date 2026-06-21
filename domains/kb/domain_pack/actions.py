@@ -14,6 +14,7 @@ content, defeating the gate. Re-running add_entry on a *new* id is idempotent.
 """
 from __future__ import annotations
 
+import hashlib
 import re
 from datetime import datetime, timezone
 from functools import partial
@@ -67,6 +68,14 @@ class KnowledgeBase:
     def stale_count(self) -> int:
         return sum(1 for p in self.dir.glob("*.md") if _frontmatter(p.read_text(encoding="utf-8")).get("stale") == "true")
 
+    def fingerprint(self, entry_id: str) -> str | None:
+        """Hash of the entry's BODY (the part edit_entry overwrites); None if absent.
+        Stamped on a proposed edit so the stale-edit guard can detect an intervening change."""
+        f = self._file(entry_id)
+        if not f.exists():
+            return None
+        return _hash(_body(f.read_text(encoding="utf-8")))
+
     # --- action implementations -------------------------------------------
 
     def add_entry(self, target: str, payload: dict) -> dict:
@@ -85,6 +94,11 @@ class KnowledgeBase:
         if not f.exists():
             return {"status": "error", "detail": f"no such entry {target}"}
         old = f.read_text(encoding="utf-8")
+        # stale-edit guard (optimistic concurrency): if the body changed since this edit was
+        # proposed, refuse instead of silently overwriting the intervening change (lost update).
+        base = payload.get("base")
+        if base is not None and base != _hash(_body(old)):
+            return {"status": "error", "detail": f"{f.name} changed since proposed; re-run to re-propose"}
         fm = _frontmatter(old)
         fm["updated"] = _now()
         f.write_text(_render(fm, payload.get("body", _body(old))), encoding="utf-8")
@@ -123,6 +137,10 @@ class KnowledgeBase:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _hash(s: str) -> str:
+    return hashlib.sha1(s.encode("utf-8")).hexdigest()
 
 
 def slug(s: str) -> str:

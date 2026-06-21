@@ -1,10 +1,17 @@
 # Stale-Edit Guard (optimistic concurrency for held actions)
 
-**Domain-pack concern (KB).** Held actions carry a payload computed against the KB
-snapshot from **propose time**, and `edit_entry` **overwrites the whole body** (no merge).
-Nothing re-validates the payload against the *current* file at approval time, so approving
-a stale held action silently clobbers any change made during the pending window — a
-**lost update**, not byte-level corruption.
+**Status: DONE (S).** Implemented in the KB pack: a proposed `edit_entry` is stamped with a
+body fingerprint (`KnowledgeBase.fingerprint`, a sha1 of the current body) via
+`_stamp_edit_base` in `domain_pack/analyze.py`; at approval time `edit_entry` recomputes the
+body hash and **refuses with an `error` outcome** ("changed since proposed; re-run to
+re-propose") if it differs — so an intervening change is never silently overwritten. The
+guard is opt-in per action (no `base` → proceeds), so other callers are unaffected.
+
+**Original problem.** Held actions carry a payload computed against the KB snapshot from
+**propose time**, and `edit_entry` **overwrites the whole body** (no merge). Nothing
+re-validated the payload against the *current* file at approval time, so approving a stale
+held action silently clobbered any change made during the pending window — a **lost update**,
+not byte-level corruption.
 
 ## How it bites (default KB config)
 1. Run N-1 proposes `edit_entry(vpn-setup, …)` → held (`reversible=False`).
@@ -21,18 +28,21 @@ approved wins, which may not be the newest information.
 - `add_entry` is create-only (can't clobber); `flag_contradiction` / `mark_stale` are additive.
   So the hazard is specifically **held `edit_entry` overwrites across the pending window**.
 
-## Fix — optimistic concurrency (small)
-- At **propose** time, record the entry's `updated` timestamp (or a content hash) in the
-  action payload.
-- At **approval** time, `edit_entry` compares it to the current file; if the entry changed
-  since it was proposed, **refuse with an `error` outcome** ("entry changed since proposed;
-  re-run to re-propose") instead of a blind overwrite.
-- This forces a fresh re-propose against current state rather than a lost update — no UI needed.
+## Fix — optimistic concurrency (DONE)
+- ✅ At **propose** time, the current **body content hash** is recorded as `payload.base`
+  (`_stamp_edit_base` → `KnowledgeBase.fingerprint`). A body hash (not the `updated`
+  timestamp) is used on purpose: `flag_contradiction` appends to the body **without** bumping
+  `updated`, so a timestamp check would miss exactly the lost-update example below.
+- ✅ At **approval** time, `edit_entry` recomputes the body hash; if it differs from `base`,
+  it **refuses with an `error` outcome** instead of a blind overwrite, forcing a fresh
+  re-propose against current state.
+- Verified: stale approve → `ran FAILED (… changed since proposed)` with the intervening
+  change preserved; clean approve → `ran ok`; no `base` → proceeds (back-compat).
 
 ## Seam / related
 - The check lives entirely in the KB pack (`domain_pack/actions.py` + the propose path in
-  `analyze.py`); no core change. A pack with append-only / CRDT-style actions wouldn't have
-  this issue at all.
+  `analyze.py`); **no core change**. A pack with append-only / CRDT-style actions wouldn't
+  have this issue at all.
 - Complemented by `approval-ui.md` (diff + edit-before-approve at review time).
 
-**Effort:** S.
+**Effort:** S — done.
