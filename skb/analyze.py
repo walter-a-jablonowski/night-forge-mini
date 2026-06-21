@@ -35,7 +35,7 @@ def analyze(model: ModelWrapper, *, goal: str, kb_index: list[dict],
     user = _render_context(goal, kb_index, snippets, recent_findings)
     result = model.complete_json(SYSTEM.format(goal=goal, actions=sorted(ACTIONS)), user)
     actions = _normalize(result.get("actions", []))
-    return {"finding": result.get("finding", ""), "actions": actions, "model": model.label()}
+    return {"finding": str(result.get("finding") or ""), "actions": actions, "model": model.label()}
 
 
 def _fake_actions(kb_index: list[dict], snippets: list[dict]) -> list[dict]:
@@ -65,10 +65,15 @@ def _fake_actions(kb_index: list[dict], snippets: list[dict]) -> list[dict]:
     return actions
 
 
-def _normalize(actions: list[dict]) -> list[dict]:
+def _normalize(actions: Any) -> list[dict]:
+    # Tolerant of malformed model output: a non-list (null / "none" / dict) or any
+    # non-dict item becomes nothing, so a bad proposal is an empty action list — not
+    # a mid-run crash. _normalize is the sanitizing boundary for model output.
     out = []
+    if not isinstance(actions, list):
+        return out
     for a in actions:
-        if a.get("name") not in ACTIONS:
+        if not isinstance(a, dict) or a.get("name") not in ACTIONS:
             continue
         a.setdefault("action_id", new_id("act"))
         a.setdefault("payload", {})
