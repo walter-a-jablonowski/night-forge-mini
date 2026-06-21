@@ -62,28 +62,33 @@ run_id = r42                                   ← group by run_id
   run-once ─────────────▶ r43: input→analysis→… (fresh run_id)
 ```
 
-## 5. Architecture — fixed core + swappable seams (registry deferred)
+## 5. Architecture — blank core + one pluggable domain pack
 ```
-                         ┌─────────── FIXED CORE ───────────┐
-   config                │  loop runner                     │
-   ├─ goal + metric ────▶│  approval gate (allow-list+rev)  │
-   ├─ allow-list ───────▶│  artifact store  (= audit log)   │
-   └─ creds ────────────▶│  decide(action_id,verdict,edits) │
-                         └───┬───────────┬───────────┬──────┘
-        swappable seams →    │           │           │
-                   connector │   analysis fn │   action[]        model wrapper
-                fetch()->art │  ctx→proposal │  {risk,rev,run}   (1 call site)
-                      │             │              │                  │
-                 [later: more  [later: per-   [later: autonomy   [later: Langfuse/
-                  connectors,   domain         policy+rollback]   LangSmith, OTel]
-                  registry]     strategies]
+   config.json (deploy)         ┌──────────── BLANK CORE ────────────┐
+   ├─ provider / model ────────▶│  loop runner                       │
+   ├─ allow-list ─────────────▶│  approval gate (allow-list + rev)  │
+   ├─ paths ──────────────────▶│  artifact store (= audit log)      │
+   └─ connector source/creds ─▶│  decide(action_id, verdict, edits) │
+                                │  model wrapper (1 call site)       │
+                                │  pack seam: Connector/Action/Pack  │
+                                └─────────────────┬──────────────────┘
+                                                  │ build_pack(cfg) -> Pack
+            ┌───────────────── DOMAIN PACK (domain_pack/) ─────────────────┐
+            │  goal                                                        │
+            │  connector    fetch() -> artifacts                           │
+            │  analysis fn  ctx -> proposal   (also measures the metric)   │
+            │  actions[]    { name, risk, reversible, run }                │
+            └──────────────────────────────────────────────────────────────┘
+     deploy = duplicate blank/ + drop in one domain_pack/   (no registry)
 ```
 
-## 6. v1 vs the vision (what's in, what's seamed for later)
+## 6. Now vs the vision (what's in, what's seamed for later)
 ```
-   IN v1  ████████████████  closed loop · artifact store · 1 connector ·
-                            sprint-planning domain · gate · scoped autonomy
-   LATER  ░░░░░░░░░░░░░░░░  +connectors/multi-channel · dashboards ·
-                            software factory · registry/multi-domain ·
-                            RBAC · cost/ROI · observability · approval UI
+   IN     ████████████████  closed loop · artifact store · blank core +
+                            pluggable domain pack (KB demo) · gate ·
+                            scoped autonomy · 1 connector
+   LATER  ░░░░░░░░░░░░░░░░  bounded retrieval · observability · cost/ROI ·
+                            approval UI · RBAC · autonomy policy · drift ·
+                            multi-channel · dashboards · software factory ·
+                            multi-loop registry (1 pack/deploy already done)
 ```
