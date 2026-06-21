@@ -1,3 +1,5 @@
+try/
+
 # runtime artifacts
 skb/data/log.jsonl
 skb/data/kb/

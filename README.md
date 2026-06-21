@@ -5,18 +5,6 @@ A minimal, working implementation of [idea_2.md](../idea_2.md): one hardcoded do
 append-only JSONL artifact store, and a per-action approval gate with a **reversible
 hard floor**.
 
-## Quick start (offline, no API key)
-
-```bash
-python -m skb --fake-llm run-once     # capture -> analyze -> propose -> gate
-python -m skb --fake-llm inbox        # list actions held for approval
-python -m skb --fake-llm approve <action_id>
-python -m skb --fake-llm reject  <action_id>
-python -m skb --fake-llm trace   <run_id>     # dump a run as a tree
-```
-`--fake-llm` runs a deterministic analyzer on the Python stdlib alone. Drop it to use a
-real model (see below).
-
 ## How it maps to the spec
 
 | idea_2 concept | Code |

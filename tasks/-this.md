@@ -47,13 +47,17 @@ in reality (token usage): smarter retrieval (feed the most relevant context, the
 Next
 ----------------------------------------------------------
 
+- [-] Maybe move config.json and /data out again (if it is like this in python)
+- [x] Maybe verify we have all from idea_2
+
+- What happens when domain pack has own requirements?
+
 - [ ] Self improving homepage
   - Simple web design => expands to better
   - Layout, site elements and content improves
   - Must have content improves
   - Constraints: e.g. logos, colors, ... for CI
-- [-] Maybe move config.json and /data out again (if it is like this in python)
-- [ ] Maybe verify we have all from idea_2
+
 - [ ] Nice CLI
 
 
