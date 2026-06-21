@@ -45,7 +45,7 @@ in reality (token usage): smarter retrieval (feed the most relevant context, the
 Next
 ----------------------------------------------------------
 
-- [ ] Could we also add an interavtive CLI (similar Claude Code) as "run trigger"?
+- [ ] Make nice CLI [text](backlog/run-triggers/interactive-cli.md)
 
 - [ ] Check backlog, what should we add? (see also above)
   
