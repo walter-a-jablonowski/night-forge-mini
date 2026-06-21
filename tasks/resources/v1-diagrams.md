@@ -1,6 +1,6 @@
 # v1 — Visual Reference
 
-Compact ASCII views of [idea_2.md](idea_2.md). Diagrams only; idea_2 is the source of truth.
+Compact ASCII views of [idea_2.md](<../v done/260621 - idea_2.md>). Diagrams only; idea_2 is the source of truth.
 
 ## 1. The closed loop
 ```

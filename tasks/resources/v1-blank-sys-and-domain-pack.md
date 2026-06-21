@@ -3,7 +3,7 @@
 **Goal:** split the working `skb/` system into a reusable **blank core** (no use case) and a
 **domain pack** (exactly one domain), so a deployment = duplicate the core + drop in one pack.
 This is *not* a runtime registry of many packs — it's one pack per deployment. Based on
-`tasks/backlog/domain-pack-template.md` (the "four things" a pack provides), simplified: no
+`tasks/v done/260621 - domain-pack-template.md` (the "four things" a pack provides), simplified: no
 registry/auto-discovery, just a fixed `import domain_pack` seam.
 
 `skb/` stays untouched as the reference implementation. We build `blank/` + `domains/kb/` fresh

@@ -42,4 +42,4 @@ the pack object is handed straight to the Engine.
 **Effort per new pack:** S–M (no core changes). **Registry boundary:** not needed for the
 one-pack-per-deploy model; would be S–M only if multi-pack-in-one-process is ever wanted.
 
-See `blank/README.md`, `domains/kb/README.md`, and `tasks/blank-core-and-domain-pack.md`.
+See `blank/README.md`, `domains/kb/README.md`, and `tasks/resources/v1-blank-sys-and-domain-pack.md`.

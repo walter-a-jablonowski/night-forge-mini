@@ -1,6 +1,6 @@
 """The domain-pack seam — the only thing a domain must satisfy to plug into the core.
 
-A pack provides exactly the "four things" from domain-pack-template.md:
+A pack provides exactly the "four things" (see tasks/resources/v1-blank-sys-and-domain-pack.md):
   1. a connector  — `fetch(seen_ids) -> artifacts`
   2. goal         — what "good" means for the domain
   3. analysis     — `(model, *, goal, snippets, recent_findings) -> {finding, metric, actions}`

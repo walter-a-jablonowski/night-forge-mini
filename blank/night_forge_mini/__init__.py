@@ -6,7 +6,8 @@ append-only artifact store, the approval gate, the record schema, and the model
 wrapper — plus the `pack.py` seam. A deployment plugs in exactly one **domain pack**
 (a `domain_pack` package providing `build_pack(cfg) -> Pack`) and runs.
 
-See tasks/blank-core-and-domain-pack.md and tasks/backlog/domain-pack-template.md.
+See tasks/resources/v1-blank-sys-and-domain-pack.md (design) and tasks/v done/ (the
+domain-pack-template + the idea_2 spec).
 """
 
 SCHEMA_V = 1

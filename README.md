@@ -1,6 +1,6 @@
 # NightForge mini — self-improving closed-loop system
 
-A minimal, working implementation of [idea_2.md](idea_2.md): the closed loop
+A minimal, working implementation of [idea_2.md](<tasks/v done/260621 - idea_2.md>): the closed loop
 (capture → ingest → analyze → propose → gate → improve) over an append-only JSONL
 artifact store, with a per-action approval gate and a **reversible hard floor**.
 
@@ -18,8 +18,7 @@ domains/kb/            demo domain pack — see domains/kb/README.md
 ├─ domain_pack/        connector, actions, analysis  (build_pack(cfg) -> Pack)
 ├─ config.json         ready-to-run deploy config
 └─ data/inbox/         six demo snippets
-idea_2.md              the spec this implements
-tasks/                 working notes + tasks/backlog/ (deferred features)
+tasks/                 backlog/ (deferred features) · resources/ · v done/ (incl. the idea_2.md spec)
 ```
 
 **Deploy** = duplicate `blank/`, copy the *contents* of a domain (e.g. `domains/kb/`) into
