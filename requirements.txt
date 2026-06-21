@@ -1,2 +1,0 @@
-# v1 runtime deps. Only needed for real LLM calls; `--fake-llm` runs on stdlib alone.
-openai>=1.40.0
