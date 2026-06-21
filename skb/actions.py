@@ -6,7 +6,11 @@ Reversibility, honestly declared:
   add_entry / flag_contradiction / mark_stale  -> append-only-ish, reversible
   edit_entry                                    -> overwrites human-curated content => NOT reversible
                                                    (hard-floored: can never auto-run)
-Actions are keyed by `target` (entry id) so re-running one is idempotent.
+`add_entry` is **create-only**: it refuses to overwrite an existing entry (returns an
+error). That refusal is what makes its `reversible: True` honest — overwriting curated
+content is irreversible, so it must go through `edit_entry`, which needs approval. Without
+this floor, an auto-run `add_entry` on an existing id would silently destroy curated
+content, defeating the gate. Re-running add_entry on a *new* id is idempotent.
 """
 from __future__ import annotations
 
@@ -55,11 +59,14 @@ class KnowledgeBase:
 
     def add_entry(self, target: str, payload: dict) -> dict:
         f = self._file(target)
-        created = not f.exists()
+        if f.exists():
+            # create-only: overwriting curated content is irreversible -> use edit_entry
+            # (reversible=False => held for approval). Never silently overwrite on auto-run.
+            return {"status": "error", "detail": f"entry {f.name} exists; use edit_entry"}
         fm = {"title": payload.get("title", target), "id": slug(target),
               "source": payload.get("source", ""), "updated": _now()}
         f.write_text(_render(fm, payload.get("body", "")), encoding="utf-8")
-        return {"status": "ok", "detail": ("created" if created else "overwrote") + f" {f.name}"}
+        return {"status": "ok", "detail": f"created {f.name}"}
 
     def edit_entry(self, target: str, payload: dict) -> dict:
         f = self._file(target)
