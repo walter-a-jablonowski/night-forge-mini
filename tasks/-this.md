@@ -56,7 +56,13 @@ Next
   3. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped.
   4. cost logging (S, roi-measurement) — per-run token/$ visibility; full ROI attribution comes later (L).
   5. approval-ui (S read-only) — web inbox over the log; lowers the cost of keeping a human at the gate.
-  6. run-triggers/ (S→M) — alternative invocation: scheduler/daemon, fs-watch, [x] interactive REPL (DONE), HTTP API, webhook, library. Next: scheduler-daemon (S); unattended ones need a pending-notification (pairs with approval-ui).
+  6. run-triggers/ (S→M) — alternative invocation methods (most important first). Unattended ones need a pending-notification (pairs with approval-ui):
+     - [x] interactive-cli (S) — DONE: REPL console (`python -m night_forge_mini` / `shell`); approve by inbox #.
+     - scheduler-daemon (S) — interval poll loop; the realistic "endless loop" for unattended operation.
+     - filesystem-watch (S) — fire a run when a new artifact lands (event-driven; fits the KB folder).
+     - http-api-server (M) — HTTP endpoints over the engine; substrate for web UI, remote, webhooks.
+     - webhook-trigger (M) — external event POSTs in to fire a run (builds on http-api-server).
+     - library-embed (XS) — call the engine in-process; already works, just document/harden.
   7. data-governance (S first step) — scoped read-only creds per connector; do when a 2nd connector lands.
   8. autonomous-actions (M) — earned autonomy (risk classifier + rollback) once hand-curating the allow-list hurts.
   9. drift-detection (L) — needs accumulated metric history first.
