@@ -1,10 +1,15 @@
 # Interactive CLI — persistent REPL console (Claude-Code-style)
 
+**Status: S done (REPL). M (in-session edit prompts + streaming) remains.** Implemented in
+`night_forge_mini/cli.py`: `python -m night_forge_mini` (no command) or `... shell` loads the
+engine once and loops on `nfm> ` — commands `run`, `inbox`, `approve <id|n>`, `reject <id|n>`,
+`trace <run_id>`, `help`, `quit`. `approve`/`reject` accept an **inbox index** (`approve 1`) or
+a raw `action_id`. Each command reuses the same print helpers and re-reads the log fresh.
+
 **What:** A persistent interactive session instead of one process per command. The engine +
-pack + config load **once**; you get a prompt and issue commands in-session:
-`run`, `inbox`, `approve <n>`, `reject <n>`, `edit <n> …`, `trace`, `help`, `quit`. After a
-`run`, the pending actions are listed and you act on them **inline** — the same per-action
-approve/reject/edit UX Claude Code uses for tool calls.
+pack + config load **once**; you get a prompt and issue commands in-session. After a `run`,
+the pending actions are listed and you act on them **inline** — the same per-action
+approve/reject UX Claude Code uses for tool calls.
 
 **Why it's a trigger:** typing `run` fires a pass, and the same session is the human-at-the-
 gate. It's the **human-driven, foreground** counterpart to the unattended
@@ -23,8 +28,8 @@ no server" floor — unlike `../approval-ui.md`'s web view.
 `decide(action_id, verdict, edits?)`. The REPL is a thin read→dispatch→print loop; the log
 stays the source of truth, and edits go through `decide()` (never mutate the log directly).
 
-**Adds later:** command REPL (S) → in-session per-action approve/reject/**edit** prompts +
-live/streamed run output (M) → optional natural-language input mapped to commands (M).
+**Adds later:** ✅ command REPL (S, done) → in-session per-action **edit**-before-approve
+prompts + live/streamed run output (M) → optional natural-language input mapped to commands (M).
 
 **Safety:** foreground + human-driven, so the unattended caveat in [README.md](README.md)
 doesn't apply — but edit-before-approve must still funnel through `decide()`.
@@ -32,4 +37,4 @@ doesn't apply — but edit-before-approve must still funnel through `decide()`.
 **Related:** pairs with `../approval-ui.md` (same edit-before-approve, terminal vs. web), same
 `decide()` seam.
 
-**Effort:** S (REPL) → M (in-session approval prompts + edit + streaming).
+**Effort:** S (REPL) ✅ → M (in-session edit prompts + streaming).

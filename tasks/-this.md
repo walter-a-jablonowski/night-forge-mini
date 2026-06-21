@@ -45,7 +45,7 @@ in reality (token usage): smarter retrieval (feed the most relevant context, the
 Next
 ----------------------------------------------------------
 
-- [ ] Make nice CLI [text](backlog/run-triggers/interactive-cli.md)
+- [x] Make nice CLI [text](backlog/run-triggers/interactive-cli.md) — DONE (S): interactive REPL (`python -m night_forge_mini` / `shell`); run/inbox/approve/reject/trace, approve by inbox #. M (edit-before-approve + streaming) remains.
 
 - [ ] Check backlog, what should we add? (see also above)
   
@@ -56,7 +56,7 @@ Next
   3. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped.
   4. cost logging (S, roi-measurement) — per-run token/$ visibility; full ROI attribution comes later (L).
   5. approval-ui (S read-only) — web inbox over the log; lowers the cost of keeping a human at the gate.
-  6. run-triggers/ (S→M) — alternative invocation: scheduler/daemon, fs-watch, interactive REPL (Claude-Code-style), HTTP API, webhook, library. Start with scheduler-daemon or interactive-cli (both S); unattended ones need a pending-notification (pairs with approval-ui).
+  6. run-triggers/ (S→M) — alternative invocation: scheduler/daemon, fs-watch, [x] interactive REPL (DONE), HTTP API, webhook, library. Next: scheduler-daemon (S); unattended ones need a pending-notification (pairs with approval-ui).
   7. data-governance (S first step) — scoped read-only creds per connector; do when a 2nd connector lands.
   8. autonomous-actions (M) — earned autonomy (risk classifier + rollback) once hand-curating the allow-list hurts.
   9. drift-detection (L) — needs accumulated metric history first.

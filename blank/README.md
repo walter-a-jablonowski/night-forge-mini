@@ -13,13 +13,15 @@ exactly one **domain pack** and deploy.
 3. `cp .env.example .env` and fill in the provider key for the model you use.
 4. Run:
    ```
+   python -m night_forge_mini                   # interactive REPL (no command); also `shell`
    python -m night_forge_mini run-once          # one loop pass
    python -m night_forge_mini inbox             # pending actions awaiting approval
    python -m night_forge_mini approve <id>      # approve a held action
    python -m night_forge_mini reject  <id>      # reject a held action
    python -m night_forge_mini trace   <run_id>  # dump a run as a tree
    ```
-   Add `--fake-llm` to run the whole loop offline (no API key / no tokens).
+   Add `--fake-llm` to run the whole loop offline (no API key / no tokens). In the REPL,
+   `approve`/`reject` also accept an inbox number (e.g. `approve 1`).
 
 Without a `domain_pack/` present, the core refuses to run and tells you to drop a pack in.
 

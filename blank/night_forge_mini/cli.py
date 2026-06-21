@@ -1,7 +1,9 @@
 """CLI over the log (idea_2 "Approval interface = CLI over the log").
 
 Commands: run-once · inbox · approve <action_id> · reject <action_id> · trace <run_id>
-Every command prints a readable summary; the JSONL log stays the source of truth.
+Run with no command (or `shell`) for an interactive REPL session that loads the engine once
+and dispatches the same operations in a loop. Every command prints a readable summary; the
+JSONL log stays the source of truth.
 
 Domain-agnostic: the one domain pack is loaded via `import domain_pack` (a package that
 must sit next to night_forge_mini/ and expose `build_pack(cfg) -> Pack`). With no pack
@@ -35,12 +37,13 @@ def main(argv: list[str] | None = None) -> int:
                                 description="Self-improving closed-loop system (blank core + one domain pack)")
     p.add_argument("--config", default="config.json")
     p.add_argument("--fake-llm", action="store_true", help="deterministic offline analysis (no API key / tokens)")
-    sub = p.add_subparsers(dest="cmd", required=True)
+    sub = p.add_subparsers(dest="cmd", required=False)  # no command -> interactive REPL
     sub.add_parser("run-once", help="run one loop pass")
     sub.add_parser("inbox", help="list pending actions awaiting approval")
     ap = sub.add_parser("approve", help="approve a pending action"); ap.add_argument("action_id")
     rj = sub.add_parser("reject", help="reject a pending action"); rj.add_argument("action_id")
     tr = sub.add_parser("trace", help="dump a run as a tree"); tr.add_argument("run_id")
+    sub.add_parser("shell", help="interactive REPL session (loads the engine once)")
 
     args = p.parse_args(argv)
 
@@ -52,6 +55,8 @@ def main(argv: list[str] | None = None) -> int:
     pack = domain_pack.build_pack(cfg)
     eng = Engine(cfg, pack, fake_llm=args.fake_llm)
 
+    if args.cmd in (None, "shell"):
+        return _repl(eng)
     if args.cmd == "run-once":
         return _run_once(eng)
     if args.cmd == "inbox":
@@ -63,6 +68,68 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "trace":
         return _trace(eng, args.run_id)
     return 1
+
+
+REPL_HELP = """commands:
+  run                 run one loop pass (capture -> analyze -> propose -> gate)
+  inbox               list pending actions awaiting approval
+  approve <id|n>      approve a pending action (by action_id or inbox number)
+  reject  <id|n>      reject a pending action (by action_id or inbox number)
+  trace   <run_id>    dump a run as a tree
+  help                show this help
+  quit | exit         leave the session"""
+
+
+def _resolve_ref(eng: Engine, ref: str) -> str | None:
+    """Resolve an approve/reject argument: an inbox index (1-based) or a raw action_id."""
+    if ref.isdigit():
+        pend = eng.store.pending_actions()
+        i = int(ref)
+        return pend[i - 1]["action"]["action_id"] if 1 <= i <= len(pend) else None
+    return ref
+
+
+def _repl(eng: Engine) -> int:
+    tag = "  [fake-llm]" if eng.model.fake else ""
+    print(f"night_forge_mini interactive - domain: {eng.pack.domain}{tag}")
+    print("type 'help' for commands, 'quit' to exit")
+    while True:
+        try:
+            line = input("nfm> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+        if not line:
+            continue
+        parts = line.split()
+        cmd, rest = parts[0].lower(), parts[1:]
+        if cmd in ("quit", "exit", "q"):
+            break
+        elif cmd in ("help", "h", "?"):
+            print(REPL_HELP)
+        elif cmd in ("run", "run-once"):
+            _run_once(eng)
+        elif cmd == "inbox":
+            _inbox(eng)
+        elif cmd in ("approve", "reject"):
+            if not rest:
+                print(f"usage: {cmd} <id|n>")
+                continue
+            aid = _resolve_ref(eng, rest[0])
+            if aid is None:
+                print(f"no pending action '{rest[0]}'")
+            elif cmd == "approve":
+                _verdict(eng.approve(aid), "approved")
+            else:
+                _verdict(eng.reject(aid), "rejected")
+        elif cmd == "trace":
+            if not rest:
+                print("usage: trace <run_id>")
+            else:
+                _trace(eng, rest[0])
+        else:
+            print(f"unknown command: {cmd} (try 'help')")
+    return 0
 
 
 def _run_once(eng: Engine) -> int:

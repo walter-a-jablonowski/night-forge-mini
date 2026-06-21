@@ -11,7 +11,7 @@ you talk to it*, not the loop logic.
 ## Files (by effort)
 - [scheduler-daemon.md](scheduler-daemon.md) — interval poll loop (the realistic "endless loop"). **S**
 - [filesystem-watch.md](filesystem-watch.md) — fire a run when a new artifact lands (event-driven). **S**
-- [interactive-cli.md](interactive-cli.md) — persistent REPL console (Claude-Code-style); human-driven, in-session approve/edit. **S→M**
+- [interactive-cli.md](interactive-cli.md) — persistent REPL console (Claude-Code-style); human-driven, in-session approve. **S done** (M: edit-before-approve + streaming)
 - [library-embed.md](library-embed.md) — call the engine as a Python library (already works; document + harden). **XS**
 - [http-api-server.md](http-api-server.md) — HTTP endpoints over the engine; substrate for UI/remote/webhooks. **M**
 - [webhook-trigger.md](webhook-trigger.md) — inbound webhook fires a run (builds on the API server). **M**
