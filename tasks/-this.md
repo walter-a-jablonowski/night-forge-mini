@@ -50,7 +50,8 @@ Next
 - [-] Maybe move config.json and /data out again (if it is like this in python)
 - [x] Maybe verify we have all from idea_2
 
-- What happens when domain pack has own requirements?
+- [ ] What happens when domain pack has own requirements?
+- [ ] Check backlog, what should we add? (see also above)
 
 - [ ] Self improving homepage
   - Simple web design => expands to better
