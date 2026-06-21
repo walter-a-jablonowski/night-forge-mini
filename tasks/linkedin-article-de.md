@@ -1,7 +1,7 @@
 
-# Die selbstoptimierende Firma
+**Eine Firma, die sich mit KI ständig selbst verbessert**
 
-Die meisten bauen KI nur an bestehende Arbeitsabläufe hin.
+Meist baut man KI nur an bestehende Arbeitsabläufe hin.
 
 Ich habe ein anderes System gebaut...
 
@@ -11,15 +11,15 @@ Viel oder alles in der Firma als Artefakt (Dokument) darstellen, das sich mit me
 
   Erfassen → Analysieren → Vorschlagen → Verbessern
 
-- Auch jede Aktion = ein Artefakt, aus dem die KI lernt
+- Auch jede Aktion kann zunächst als ein Artefakt (Dokument) beschreiben werden
 - Abfragbare Organisation (Queryable Org)
 
-## Umterschied zum Workflow
+**Umterschied zum Workflow**
 
 - **KI-Workflow:** Erzeugt nur ein Ergebnis
-- **Selbstverbesserndes KI-System:** Verbessert das selbst Ergebnis permanent
+- **Selbstverbesserndes KI-System:** Verbessert ein Ergebnis permanent
 
-## Was man damit tun kann
+**Was man damit tun kann**
 
 Beispiele:
 
@@ -31,15 +31,14 @@ Beispiele:
 - **Marketing & Content:** Kampagnen analysieren ihren ROI und passen die nächste Iteration selbstständig an.
 - **Produktmanagement:** Nutzerfeedback fließt direkt in optimierte Feature-Spezifikationen (PRDs) ein.
 - **Vertrieb & Sales:** Offers und Pitch-Decks verbessern ihre Konversionsrate basierend auf verlorenen/gewonnenen Deals.
-- **Finanzen & Controlling:** Abweichungen im Budget verfeinern automatisch die Prognosemodelle für das Folgequartal.
+- **Finanzen & Controlling:** Abweichungen im Budget verfeinern automatisch die Modelle für das Folgequartal.
 - **Recht & Compliance:** Vertragsvorlagen passen sich dynamisch an neu verhandelte Klauseln und Risikobewertungen an.
 - **Wissensmanagement:** Die interne Dokumentation (Wiki) aktualisiert und strukturiert sich durch tägliche Chats von selbst.
 
-## Was es real macht (keine Demo)
+**Was es echt macht (keine Demo)**
 
-- **Append-Only Log durchgehend:** jede Entscheidung plus jedes Ergebnis, inklusive Begründung.
-- **Safety Hard Floor:** reversible Aktionen laufen von selbst; alles Irreversible wird *im Code* von der automatischen Ausführung blockiert und wartet auf einen Menschen.
-- **Menschen an den Schnittstellen:** steuern und genehmigen.
+- **Hohe Sicherheit:** Werden im ersten Schtritt keine Aktionen ausgelöst, sondern nur Dokumente bearbeitet - dann ist das is völlig ungefährlich. Die Umsetzung erfolgt dann in Schritt 2.
+- **Append-Only Log durchgehend:** Jede Entscheidung plus jedes Ergebnis, inklusive Begründung.
 
 Ich füge dem Unternehmen nicht einfach KI hinzu. Ich baue das Unternehmen als Kreislauf neu auf.
 

@@ -55,6 +55,7 @@ Next
 Advanced
 ----------------------------------------------------------
 
+- Wahlweise Aktionen als file only, check at end, then run later
 - Anything weak in /backlog? Needs improvement?
 - [ ] Add stuff like [text](backlog/domain-pack-template.md)
 
