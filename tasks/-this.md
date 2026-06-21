@@ -49,6 +49,14 @@ Next
 - [x] Maybe verify we have all from idea_2
 
 - [ ] What happens when domain pack has own requirements?
+- [ ] No stop: python -m night_forge_mini approve <id>
+  - only the one action is on halt
+  - when approved the next run does it
+
+    $ run-once        # auto-runs what it can, parks the rest as pending, EXITS (shell returns)
+    $ inbox           # (optional) see what's held
+    $ approve <id>    # runs just that held action, logs decision+outcome, EXITS
+    $ approve <id2>   # each held action approved independently
 
 - [ ] Try nice CLI
 
@@ -57,15 +65,16 @@ Next
   by effort in parens
   
   1. bounded-retrieval (S) — finish idea_2's "never the full store"; KB context still loads the whole index. Half-done v1 gap.
-  2. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped.
-  3. cost logging (S, roi-measurement) — per-run token/$ visibility; full ROI attribution comes later (L).
-  4. approval-ui (S read-only) — web inbox over the log; lowers the cost of keeping a human at the gate.
-  5. data-governance (S first step) — scoped read-only creds per connector; do when a 2nd connector lands.
-  6. autonomous-actions (M) — earned autonomy (risk classifier + rollback) once hand-curating the allow-list hurts.
-  7. drift-detection (L) — needs accumulated metric history first.
-  8. multi-channel-capture (L) — many integrations + consent.
-  9. dashboards (L) — only pays off with multiple domains.
-  10. software-factory (XL) — separate, huge specialization.
+  2. stale-edit-guard (S) — prevent silent lost-update: approving a stale held edit_entry overwrites intervening changes. Optimistic-concurrency check.
+  3. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped.
+  4. cost logging (S, roi-measurement) — per-run token/$ visibility; full ROI attribution comes later (L).
+  5. approval-ui (S read-only) — web inbox over the log; lowers the cost of keeping a human at the gate.
+  6. data-governance (S first step) — scoped read-only creds per connector; do when a 2nd connector lands.
+  7. autonomous-actions (M) — earned autonomy (risk classifier + rollback) once hand-curating the allow-list hurts.
+  8. drift-detection (L) — needs accumulated metric history first.
+  9. multi-channel-capture (L) — many integrations + consent.
+  10. dashboards (L) — only pays off with multiple domains.
+  11. software-factory (XL) — separate, huge specialization.
 
 - [ ] Self improving homepage
   - Simple web design => expands to better
