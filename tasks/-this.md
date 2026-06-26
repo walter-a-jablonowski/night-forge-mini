@@ -45,7 +45,15 @@ in reality (token usage): smarter retrieval (feed the most relevant context, the
 Next
 ----------------------------------------------------------
 
-- [ ] Do we already have git integration to be able to commit on changes?
+- [ ] Git integration to version the materialized artifacts (needed for the website pack) [text](backlog/git-integration.md) — no git integration today; history lives only in the append-only JSONL log, materialized files keep latest version only.
+
+- [ ]
+  - The whole thing e.g. the whole site is committed/pushed after each successful loop. Do I see this right?
+    - but we could use a config setting: per action, per run, ...
+  - Typically we push to github, only if easy: we can use open a local git as a fallback if git is on and github missing
+  - git in configuration as an optional entry
+    - put in core config or domain pack specific?
+  - existing project `.git/` is the sources repo, an installation would use its own repo somewhere in a different folder or if possible for testing here in a subfolder (like /try)
 
 - [ ] Add a second domain pack "website". It starts with a minimal dummy website, then it consumes content from the internet einter using web search or a specified list of pages. The LLM uses that content to improve the website. It may:
 

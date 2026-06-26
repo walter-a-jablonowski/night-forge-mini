@@ -27,17 +27,42 @@ remotes) that shouldn't leak into the domain-agnostic core.
 - Actions own all file writes inside the pack; a commit step can wrap the pack's writes
   without a core change.
 
-**Design sketch:**
-- A small optional helper (e.g. `commit_artifacts(paths, message)`) the pack calls after a
-  successful `outcome`, gated by a config flag (`"git": {"enabled": true, "dir": "data/site"}`).
-- Commit message references the `run_id` + `action_id` so log and git stay cross-linkable.
-- Keep it pack-side (or a thin shared util) so the core stays domain-agnostic; no auto-init
-  of unexpected repos.
+**Design decisions (resolved):**
+
+- **Commit unit = the whole artifact folder snapshot.** Git snapshots whatever is staged,
+  so the model is `git add -A` in the artifact dir + commit — the *whole* materialized
+  folder at that point, not per-file deltas.
+- **Granularity is a config setting (`per_run` default, `per_action` optional).** A
+  `run_once` pass is the atomic loop step, so the default is one commit after the run
+  completes *if any `outcome` succeeded*. `per_action` gives finer history (one commit per
+  successful action) at the cost of more commits per run.
+- **Local-first, push-if-easy (tiered, never breaks the loop):**
+  1. git enabled → always commit **locally** first.
+  2. remote configured + reachable → also **push**.
+  3. remote missing/unreachable → stay **local-only**, log a warning, do **not** fail the
+     loop (same spirit as the gate's "never half-commit" failure handling).
+- **Config lives in CORE `config.json` (optional; absent = off).** The git block is
+  operator/infra (like `provider`, `paths`, `allow_list`): enable flag, remote URL,
+  granularity, repo dir, creds via `.env`. The **pack** only declares *which* path is its
+  materialized artifact — and those paths already live in `config.paths` (e.g. `kb`,
+  future `site`), so the git block just references which path key(s) to version. This
+  keeps the existing split: core config = operator settings, pack = domain definition.
+  Sketch:
+  ```json
+  "git": { "enabled": true, "versions": ["site"], "granularity": "per_run",
+           "remote": "", "branch": "main" }
+  ```
+- **Separate repo, NEVER the source `.git/`.** The artifact repo is a distinct repo rooted
+  at the artifact/data dir (or deploy root). A hard guard must refuse to commit if the
+  target resolves to the project's source repo root. For testing, `/try` is the deploy
+  sandbox, so the test artifact repo lives there (e.g. `try/data/site/`).
+- **Hook point:** a small optional helper (e.g. `commit_artifacts(dir, message)`) invoked
+  after successful `outcome`(s); commit message references the `run_id` (+ `action_id` for
+  `per_action`) so the JSONL log and git history stay cross-linkable.
 
 **Open questions:**
-- One repo for the whole deploy vs. per-artifact-folder repo?
-- Commit granularity: per action, per run, or batched?
-- Remotes/push and auth — in scope or local-only first?
-- Relationship to the existing project `.git/` (must never touch it).
+- Shell out to a `git` binary vs. a lib (e.g. `dulwich`/`GitPython`) — dependency tradeoff.
+- Auth for remote push (token via `.env`, SSH) — define for the GitHub-push path.
+- Auto-init the artifact repo on first run vs. require a pre-initialized repo.
 
 **Effort:** S (local commit-on-outcome) → M (config, remotes, per-pack policy).
