@@ -45,6 +45,14 @@ in reality (token usage): smarter retrieval (feed the most relevant context, the
 Next
 ----------------------------------------------------------
 
+- [ ] Do we already have git integration to be able to commit on changes?
+
+- [ ] Add a second domain pack "website". It starts with a minimal dummy website, then it consumes content from the internet einter using web search or a specified list of pages. The LLM uses that content to improve the website. It may:
+
+- Edit content
+- but also change layout and design
+- create or remove new sub pages
+
 - [x] Make nice CLI [text](backlog/run-triggers/interactive-cli.md) — DONE (S): interactive REPL (`python -m night_forge_mini` / `shell`); run/inbox/approve/reject/trace, approve by inbox #. M (edit-before-approve + streaming) remains.
 
 - [ ] Check backlog, what should we add? (see also above)
