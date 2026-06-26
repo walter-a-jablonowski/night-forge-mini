@@ -59,10 +59,18 @@ remotes) that shouldn't leak into the domain-agnostic core.
 - **Hook point:** a small optional helper (e.g. `commit_artifacts(dir, message)`) invoked
   after successful `outcome`(s); commit message references the `run_id` (+ `action_id` for
   `per_action`) so the JSONL log and git history stay cross-linkable.
+- **Use the `git` CLI (shell out), not a library.** git is almost always installed; the CLI
+  reuses the user's existing auth (SSH keys / credential helper / token) so the app manages
+  no credentials. If `git` isn't on PATH, the feature stays disabled (never breaks the
+  loop). "GitHub installed" just means git is installed — nothing GitHub-specific is
+  embedded; push targets whatever `remote` URL is configured.
+- **Repo must be pre-initialized (auto-init deferred).** For now the operator creates the
+  artifact repo themselves (`git init` in the artifact dir, optionally `git remote add`).
+  The app commits/pushes to an existing repo and does NOT init one. This must be documented
+  as a setup requirement in the deploy README when the feature ships.
 
 **Open questions:**
-- Shell out to a `git` binary vs. a lib (e.g. `dulwich`/`GitPython`) — dependency tradeoff.
 - Auth for remote push (token via `.env`, SSH) — define for the GitHub-push path.
-- Auto-init the artifact repo on first run vs. require a pre-initialized repo.
+- Auto-init the artifact repo on first run (deferred; pre-init required for v1).
 
 **Effort:** S (local commit-on-outcome) → M (config, remotes, per-pack policy).
