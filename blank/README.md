@@ -42,3 +42,30 @@ Provide a `domain_pack` package exposing `build_pack(cfg) -> Pack`. A `Pack` car
   connector params/creds, the **`allow_list`** (which actions may auto-run here), `recent_runs`.
 - The pack code owns the domain definition (goal, metric, connector impl, actions). The pack
   declares each action's honest reversibility; your `allow_list` decides what auto-runs.
+
+## Optional: git versioning of the materialized artifacts
+The JSONL log is always the source of truth. On top of it you can **optionally** version the
+files a pack writes (the KB markdown, a website's pages, …) in git, getting real diffs and
+`git revert`. This is the **command-line variant**: the core shells out to your installed
+`git`, reusing your existing auth (SSH key / credential helper / token) — the app stores no
+credentials.
+
+Enable it in `config.json`:
+```json
+"git": { "enabled": true, "repo_dir": "data", "granularity": "per_run", "remote": "", "branch": "main" }
+```
+- `granularity`: `per_run` (one commit per loop pass, default) or `per_action` (one per action).
+- `remote`: leave empty for **local-only**; set it (e.g. `origin`) to also **push** after each
+  commit. A push failure never breaks the loop — the local commit is kept and a warning printed.
+- A single approved/held action always commits on success, regardless of `granularity`.
+
+**Requirement — pre-initialize the repo yourself.** The core commits/pushes but never runs
+`git init`. Before enabling, create the artifact repo:
+```
+cd <deploy>/data        # = your repo_dir
+git init
+git remote add origin <url>   # only if you set "remote": "origin"
+```
+`repo_dir` **must be the root of its own repo** and **must not be the project's source repo** —
+the core refuses to commit if `repo_dir` is merely *inside* another repo (so it can never touch
+the source `.git/`). `git` must be on `PATH`; if it isn't, versioning is silently skipped.

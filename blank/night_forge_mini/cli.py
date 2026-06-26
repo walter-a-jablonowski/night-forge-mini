@@ -153,7 +153,23 @@ def _run_once(eng: Engine) -> int:
         print(f"  {a['action_id']}  {a['name']:<18} [{a['risk_level']},rev={a['reversible']}]  -> PENDING (needs approval)")
     if r["pending"]:
         print(f"{len(r['pending'])} pending - run `inbox` to review")
+    _print_git(r.get("git"))
     return 0
+
+
+def _print_git(git) -> None:
+    """Render git commit result(s) from a run/verdict, if git versioning is on."""
+    if not git:
+        return
+    items = git if isinstance(git, list) else [git]
+    for gr in items:
+        if not gr or gr.get("status") in ("skipped", "noop"):
+            continue
+        if gr.get("status") == "ok":
+            push = f"  (push {gr['push']})" if "push" in gr else ""
+            print(f"git        : committed {gr.get('detail','')}{push}")
+        else:
+            print(f"git        : {gr.get('status')} {gr.get('detail','')}")
 
 
 def _inbox(eng: Engine) -> int:
@@ -185,6 +201,7 @@ def _verdict(res: dict, word: str) -> int:
     else:
         tail = ""
     print(f"{a['action_id']} {word} [logged under {res['run_id']}]{tail}")
+    _print_git(res.get("git"))
     return 0
 
 

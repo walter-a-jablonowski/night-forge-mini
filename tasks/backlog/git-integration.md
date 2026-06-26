@@ -1,5 +1,11 @@
 # Git Integration (version the materialized artifacts)
 
+**Status: DONE (S) — command-line variant.** Implemented in core `night_forge_mini/git_sync.py`
+(`Git`, shells out to the `git` binary), wired into `loop.py` (`Engine._commit_action` /
+`_commit_run` / `_commit_resume`), config via `Config.git` + the `"git"` block, results shown
+in `cli.py` (`_print_git`). Documented in `blank/README.md`. The in-process **library**
+back-end is split out to `git-library.md`.
+
 **What:** Optionally commit a domain pack's **materialized artifacts** (the KB markdown
 under `data/kb/`, a future website's files under `data/site/`, etc.) to a git repo, one
 commit per applied action / per run. The JSONL log stays the source of truth; git adds
@@ -47,9 +53,10 @@ remotes) that shouldn't leak into the domain-agnostic core.
   materialized artifact — and those paths already live in `config.paths` (e.g. `kb`,
   future `site`), so the git block just references which path key(s) to version. This
   keeps the existing split: core config = operator settings, pack = domain definition.
-  Sketch:
+  Shipped shape (a single `repo_dir` staged whole with `git add -A`, simpler than the
+  earlier per-path-key `versions` idea):
   ```json
-  "git": { "enabled": true, "versions": ["site"], "granularity": "per_run",
+  "git": { "enabled": true, "repo_dir": "data", "granularity": "per_run",
            "remote": "", "branch": "main" }
   ```
 - **Separate repo, NEVER the source `.git/`.** The artifact repo is a distinct repo rooted
@@ -69,8 +76,17 @@ remotes) that shouldn't leak into the domain-agnostic core.
   The app commits/pushes to an existing repo and does NOT init one. This must be documented
   as a setup requirement in the deploy README when the feature ships.
 
-**Open questions:**
-- Auth for remote push (token via `.env`, SSH) — define for the GitHub-push path.
-- Auto-init the artifact repo on first run (deferred; pre-init required for v1).
+**Resolved at implementation:**
+- **git CLI, not a library** — done; library variant deferred to `git-library.md`.
+- **Pre-initialized repo required** — the core never runs `git init`; documented in
+  `blank/README.md` and both `config.json`s.
+- **Repo-root guard** — `available()` refuses unless `git rev-parse --show-toplevel` equals
+  `repo_dir`, so it can never commit to a parent/source repo.
+- **Push is best-effort** — a failed push keeps the local commit and only warns.
 
-**Effort:** S (local commit-on-outcome) → M (config, remotes, per-pack policy).
+**Open questions (remaining):**
+- Auth for remote push (token via `.env`, SSH) — relies on the operator's existing git auth
+  today; revisit if a deploy needs app-managed creds.
+- Auto-init the artifact repo on first run (deferred; pre-init required for now).
+
+**Effort:** S — done (CLI, local + push). Library back-end (M) tracked separately.

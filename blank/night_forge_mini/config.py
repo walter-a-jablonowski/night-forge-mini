@@ -29,6 +29,11 @@ class Config:
         """Connector params/creds for the pack to wire its connector (e.g. source path)."""
         return self.raw.get("connector", {})
 
+    @property
+    def git(self) -> dict[str, Any]:
+        """Optional git-versioning settings (operator/infra). Absent => disabled."""
+        return self.raw.get("git", {})
+
     def get(self, key: str, default: Any = None) -> Any:
         """Generic read for pack-specific settings (e.g. kb_context_max)."""
         return self.raw.get(key, default)

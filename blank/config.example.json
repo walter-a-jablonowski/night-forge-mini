@@ -24,5 +24,14 @@
   "connector": {},
 
   "allow_list": [],
-  "recent_runs": 5
+  "recent_runs": 5,
+
+  "_git_comment": "OPTIONAL git versioning of the materialized artifacts. Disabled unless enabled=true. repo_dir MUST be a PRE-INITIALIZED git repo rooted exactly there (run `git init` yourself) and MUST NOT be the project's source repo. granularity: per_run|per_action. Leave remote empty for local-only; set it (e.g. origin) to also push. Command-line variant (uses your existing git auth).",
+  "git": {
+    "enabled": false,
+    "repo_dir": "data",
+    "granularity": "per_run",
+    "remote": "",
+    "branch": "main"
+  }
 }

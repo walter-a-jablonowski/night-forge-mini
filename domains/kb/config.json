@@ -28,5 +28,14 @@
 
   "allow_list": ["add_entry", "flag_contradiction", "mark_stale"],
   "recent_runs": 5,
-  "kb_context_max": 20
+  "kb_context_max": 20,
+
+  "_git_comment": "OPTIONAL git versioning of the materialized KB. Off by default. To enable: set enabled=true, then PRE-INITIALIZE the repo yourself (`git init` inside repo_dir, which must NOT be the source repo). Set remote (e.g. origin) to also push; leave empty for local-only.",
+  "git": {
+    "enabled": false,
+    "repo_dir": "data",
+    "granularity": "per_run",
+    "remote": "",
+    "branch": "main"
+  }
 }

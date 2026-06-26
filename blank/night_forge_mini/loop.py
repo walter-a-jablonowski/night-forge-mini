@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from .gate import can_auto_run, decide
+from .git_sync import Git
 from .llm import ModelWrapper
 from .pack import Pack
 from .records import Record, new_id, now_iso, INPUT, ANALYSIS, PROPOSAL
@@ -22,6 +23,7 @@ class Engine:
         self.pack = pack
         self.store = Store(cfg.path("log"))
         self.model = ModelWrapper(cfg.provider(), fake=fake_llm)
+        self.git = Git.from_config(cfg)
 
     # --- run-once ----------------------------------------------------------
 
@@ -65,18 +67,57 @@ class Engine:
                                  payload={"actions": actions}))
 
         # (5) Gate (per action)
-        ran, pending = [], []
+        ran, pending, git_results = [], [], []
         for a in actions:
             if can_auto_run(a["name"], self.cfg.allow_list, self.pack.actions):
                 res = decide(self.store, self.pack.actions, domain=domain, run_id=run_id,
                              action=a, verdict="auto-run", by="allow-list")
                 ran.append({"action": a, "res": res})
+                # (6) Version the materialized artifacts (per-action granularity).
+                gr = self._commit_action(run_id, a, res)
+                if gr:
+                    git_results.append(gr)
             else:
                 pending.append(a)
 
+        gr = self._commit_run(run_id, ran)  # per-run granularity: one commit for the pass
+        if gr:
+            git_results.append(gr)
+
         return {"status": "ok", "run_id": run_id, "captured": len(snippets),
                 "finding": result["finding"], "metric": metric_value,
-                "model": result.get("model", ""), "ran": ran, "pending": pending}
+                "model": result.get("model", ""), "ran": ran, "pending": pending,
+                "git": git_results}
+
+    # --- git versioning of the materialized artifacts ----------------------
+
+    @staticmethod
+    def _ran_ok(res: dict) -> bool:
+        return bool(res.get("ran")) and res.get("result", {}).get("status", "ok") == "ok"
+
+    def _commit_msg(self, run_id: str, action: dict) -> str:
+        target = action.get("target", "")
+        return f"{run_id}: {action['name']} {target} [{action['action_id']}]".replace("  ", " ").strip()
+
+    def _commit_action(self, run_id: str, action: dict, res: dict) -> dict | None:
+        if self.git.granularity != "per_action" or not self._ran_ok(res):
+            return None
+        return self.git.commit(self._commit_msg(run_id, action))
+
+    def _commit_run(self, run_id: str, ran: list[dict]) -> dict | None:
+        if self.git.granularity != "per_run":
+            return None
+        n = sum(1 for item in ran if self._ran_ok(item["res"]))
+        if n == 0:
+            return None
+        return self.git.commit(f"{run_id}: {n} action(s) auto-run")
+
+    def _commit_resume(self, run_id: str, action: dict, res: dict) -> dict | None:
+        # A single approved/held action is its own unit of work -> commit on success
+        # regardless of granularity.
+        if not self._ran_ok(res):
+            return None
+        return self.git.commit(self._commit_msg(run_id, action))
 
     # --- resume (approve / reject) ----------------------------------------
 
@@ -92,7 +133,9 @@ class Engine:
         action = loc["action"]
         res = decide(self.store, self.pack.actions, domain=action.get("domain", self.pack.domain),
                      run_id=loc["run_id"], action=action, verdict=verdict, by=by, edits=edits)
-        return {"status": "ok", "run_id": loc["run_id"], "action": action, "res": res}
+        git_res = self._commit_resume(loc["run_id"], action, res)
+        return {"status": "ok", "run_id": loc["run_id"], "action": action, "res": res,
+                "git": git_res}
 
     def approve(self, action_id: str, by: str = "user", edits: dict | None = None) -> dict[str, Any]:
         return self._resume(action_id, "approve", by, edits)
