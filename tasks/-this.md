@@ -45,11 +45,10 @@ in reality (token usage): smarter retrieval (feed the most relevant context, the
 Next
 ----------------------------------------------------------
 
-- [ ] Add a second domain pack "website". It starts with a minimal dummy website, then it consumes content from the internet einter using web search or a specified list of pages. The LLM uses that content to improve the website. It may:
+- [text](backlog/website-domain-pack.md) — captured: `web-source` connector (search|pages), config-sourced goal, actions create_page (reversible, auto-runnable) / edit_content / change_layout / remove_page (all reversible=false → held); site under `data/site/` versioned via the new git integration. Effort L (phased).
 
-- Edit content
-- but also change layout and design
-- create or remove new sub pages
+  - Woud you change something?
+  - See questions in task
 
 - [x] Make nice CLI [text](backlog/run-triggers/interactive-cli.md) — DONE (S): interactive REPL (`python -m night_forge_mini` / `shell`); run/inbox/approve/reject/trace, approve by inbox #. M (edit-before-approve + streaming) remains.
 
@@ -97,6 +96,14 @@ Done
 ----------------------------------------------------------
 
 ### 2026-06-26
+
+- [x] Add a second domain pack "website". It starts with a minimal dummy website, then it consumes content from the internet either using web search or a specified list of pages. The LLM uses that content to improve the website. It may:
+
+  - Edit content
+  - but also change layout and design
+  - create or remove new sub pages
+
+  The exact goal for the LLM and how to improve the website is given by the user in config.
 
 - [x] Git integration to version the materialized artifacts (needed for the website pack) [text](backlog/git-integration.md) — no git integration today; history lives only in the append-only JSONL log, materialized files keep latest version only.
 
