@@ -45,15 +45,22 @@ in reality (token usage): smarter retrieval (feed the most relevant context, the
 Next
 ----------------------------------------------------------
 
-- tool-registry
+- [x] tool-registry
+  - [ ] fetch_url tool isn't enough for website domain, we need search and fetch
+    - Tavily Exa 
 
 - [text](backlog/website-domain-pack.md) — captured: `web-source` connector (search|pages), config-sourced goal, actions create_page (reversible, auto-runnable) / edit_content / change_layout / remove_page (all reversible=false → held); site under `data/site/` versioned via the new git integration. Effort L (phased).
 
-  - fetch_url tool isn't wnough we need search and fetch
-    - Tavily Exa 
   - See questions in task
   - Woud you change something?
   - Check for errors
+
+  - First page: simple healthy nutrition
+    - Ingredients
+    - Simple meals
+      - fast to make (sample: put in a boal, heat up, ready)
+      - good combinations of ingredients (nutrients) per meal
+      - cheap (only if possible, price is lower priority)
 
 - [x] Make nice CLI [text](backlog/run-triggers/interactive-cli.md) — DONE (S): interactive REPL (`python -m night_forge_mini` / `shell`); run/inbox/approve/reject/trace, approve by inbox #. M (edit-before-approve + streaming) remains.
 
