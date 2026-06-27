@@ -59,8 +59,8 @@ the closed loop producing a tangible, deployable artifact.
   first run has something to improve.
 
 ## Open questions
-- **Web fetching deps — resolved → its own task `tool-registry.md` (do first).** The core gets
-  a tool registry + `night_forge_mini/tools/` with stdlib built-ins (`fetch_url`,
+- **Web fetching deps — resolved → its own task `tool-registry.md` (DONE).** The core has a
+  tool registry + `night_forge_mini/tools/` with stdlib built-ins (`fetch_url`,
   `html_to_text`), landed **before** this pack. So **`pages` mode uses the core fetcher**;
   **`search` mode is a pack-registered tool** (e.g. Exa — needs a key in config + `.env`,
   like the LLM providers). See `tool-registry.md` for the full design and boundaries.
@@ -104,8 +104,8 @@ git supplies the rollback mechanism that backlog item names as the precondition 
 classifier required, because every change is recoverable.
 
 ## Depends on / pairs with
-- **tool-registry** (do first) — supplies the core `fetch_url` / `html_to_text` tools this
-  pack's `pages` mode uses; `search` mode registers a pack tool (e.g. Exa) on top.
+- **tool-registry** (DONE) — supplies the core `fetch_url` / `html_to_text` tools this pack's
+  `pages` mode uses; `search` mode registers a pack tool (e.g. Exa) on top.
 - **autonomous-actions** — git-backed autonomy (above) is its first concrete instance; git is
   the rollback substrate that item requires.
 - **git integration** (DONE) — versioning + push of `data/site/`.

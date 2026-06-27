@@ -1,5 +1,12 @@
 # Core tool registry + built-in tools (`night_forge_mini/tools/`)
 
+**Status: DONE (S).** Shipped `night_forge_mini/tools/` — `registry.py` (`Tool` dataclass +
+`Registry` + module-level `registry`), built-ins `fetch_url.py` + `html_to_text.py` (stdlib,
+zero new dep), wired explicitly in `tools/__init__.py`. Verified: registration/lookup,
+duplicate-name guard, `fetch_url` rejects non-http(s), `html_to_text` drops script/style +
+decodes entities, `available()` honesty via `requires`, fresh-`Registry` isolation. Docs in
+`blank/README.md`. Remaining (deferred, see non-goals): LLM function-calling exposure.
+
 **What:** Give the blank core a small **tool registry** plus a `night_forge_mini/tools/`
 package of basic, reusable tools. A *tool* is a domain-agnostic capability a pack's
 connector / action / analyze can call (e.g. fetch a URL, strip HTML to text). The core

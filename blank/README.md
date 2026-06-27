@@ -37,6 +37,23 @@ Provide a `domain_pack` package exposing `build_pack(cfg) -> Pack`. A `Pack` car
 "four things": `connector`, `goal`, `actions` (name → `Action`), and `analyze`. See
 `night_forge_mini/pack.py` for the interfaces and `domains/kb/` for a worked example.
 
+## Tools (shared toolbox)
+The core ships a small tool registry (`night_forge_mini/tools/`) so packs don't reimplement
+common infra. Built-ins are stdlib-only (zero extra dependency):
+- `fetch_url(url)` — HTTP(S) GET → text (refuses non-http(s); size-capped).
+- `html_to_text(html)` — strip HTML to readable plain text.
+
+Use one from a pack:
+```python
+from night_forge_mini.tools import registry
+text = registry.get("fetch_url").run("https://example.com")
+```
+A pack registers its own (keyed / heavier) tools inside `build_pack(cfg)` via
+`registry.register(Tool(...))`. A tool needing a secret names the **env-var** in `requires`
+(the key lives in `.env`, like the model providers); `tool.available()` is `False` when it's
+missing, so the capability disables gracefully instead of crashing. File layout: a simple
+tool is one file `tools/MY_TOOL.py`; a complex tool is its own package `tools/MY_TOOL/`.
+
 ## Config ownership
 - `config.json` (deploy root) = operator settings: `provider`/`providers`, `paths`,
   connector params/creds, the **`allow_list`** (which actions may auto-run here), `recent_runs`.
