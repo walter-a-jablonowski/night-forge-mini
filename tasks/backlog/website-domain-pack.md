@@ -109,6 +109,13 @@ classifier required, because every change is recoverable.
   (overwrite + delete are the common case, not the exception).
 
 **Effort:** L — new web connector (+ optional search-API key), several file-shaped actions
-including destructive ones, a seed site, and a config-driven goal. Could phase: (1) `pages`
-connector + `create_page`/`edit_content` on static HTML; (2) layout/design + `remove_page`;
-(3) web `search` mode.
+including destructive ones, a seed site, and a config-driven goal. Phasing:
+- **(0) core: git-recoverable floor — the first step of this pack.** Relax the gate's
+  reversible hard floor to `reversible OR git_recoverable` (see "Default mode"), with the
+  per-action-commit guard and the "git unhealthy → hold" fallback. Deliberately *not* landed
+  with the git integration: it has no consumer until this pack's destructive actions exist,
+  and it can only be tested end-to-end against them (commit → `git revert` → dirty-repo hold).
+  KB stays unaffected (ships git off + no destructive actions allow-listed).
+- (1) `pages` connector + `create_page`/`edit_content` on static HTML.
+- (2) layout/design + `remove_page`.
+- (3) web `search` mode.
