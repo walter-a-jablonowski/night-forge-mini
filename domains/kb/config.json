@@ -26,15 +26,15 @@
   },
   "connector": { "source": "data/inbox" },
 
-  "allow_list": ["add_entry", "flag_contradiction", "mark_stale"],
+  "allow_list": ["add_entry", "flag_contradiction", "mark_stale", "edit_entry"],
   "recent_runs": 5,
   "kb_context_max": 20,
 
-  "_git_comment": "OPTIONAL git versioning of the materialized KB. Off by default. To enable: set enabled=true, then PRE-INITIALIZE the repo yourself (`git init` inside repo_dir, which must NOT be the source repo). Set remote (e.g. origin) to also push; leave empty for local-only.",
+  "_git_comment": "Git versioning of the materialized KB - REQUIRED here because edit_entry is allow-listed: edit_entry is honestly reversible=false (it overwrites curated content), so the gate only auto-runs it when git makes it revertible (enabled + granularity=per_action + repo healthy/clean). repo_dir is data/kb (the markdown only; already gitignored in the source tree so the artifact repo nests cleanly). PRE-INITIALIZE it: `git init` inside data/kb. Set remote (e.g. origin) to also push; empty = local-only. If git is unavailable/dirty, edit_entry safely HOLDS for approval instead.",
   "git": {
-    "enabled": false,
-    "repo_dir": "data",
-    "granularity": "per_run",
+    "enabled": true,
+    "repo_dir": "data/kb",
+    "granularity": "per_action",
     "remote": "",
     "branch": "main"
   }

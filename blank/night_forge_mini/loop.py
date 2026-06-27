@@ -69,7 +69,11 @@ class Engine:
         # (5) Gate (per action)
         ran, pending, git_results = [], [], []
         for a in actions:
-            if can_auto_run(a["name"], self.cfg.allow_list, self.pack.actions):
+            # git_recoverable is re-checked per action: after each per-action commit the repo
+            # is clean again, so a later irreversible action stays auto-runnable; if a commit
+            # failed (repo dirty) it flips False and the next destructive action holds.
+            if can_auto_run(a["name"], self.cfg.allow_list, self.pack.actions,
+                            git_recoverable=self.git.recoverable()):
                 res = decide(self.store, self.pack.actions, domain=domain, run_id=run_id,
                              action=a, verdict="auto-run", by="allow-list")
                 ran.append({"action": a, "res": res})

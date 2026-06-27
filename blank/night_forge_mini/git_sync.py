@@ -74,6 +74,21 @@ class Git:
             return False
         return True
 
+    def is_clean(self) -> bool:
+        """True if the working tree + index have no uncommitted changes."""
+        st = self._run("status", "--porcelain")
+        return st.returncode == 0 and not st.stdout.strip()
+
+    def recoverable(self) -> bool:
+        """True when an overwrite/delete in this repo is safely revertible via git, so the
+        gate may auto-run an honestly-irreversible action because git supplies the undo:
+        versioning on, `per_action` commits (each change is its own revert point), repo
+        healthy AND currently clean (the pre-change state is already committed). If any of
+        these fails (e.g. a prior commit failed -> dirty), it returns False and the gate
+        holds the destructive action instead of risking unrecoverable loss."""
+        return (self.enabled and self.granularity == "per_action"
+                and self.available() and self.is_clean())
+
     # --- public ------------------------------------------------------------
 
     def commit(self, message: str) -> dict[str, Any]:

@@ -1,9 +1,11 @@
 """The approval gate + the single `decide()` function (idea_2 guardrail), now
 domain-agnostic: it drives the pack's `actions` dict, not any concrete domain.
 
-Auto-run requires BOTH `name in allow_list` AND `actions[name].reversible == True`.
-The `reversible == false` block is a HARD FLOOR enforced here in code — a
-mis-configured allow-list still cannot auto-run an irreversible action.
+Auto-run requires `name in allow_list` AND the action is *recoverable*: either
+`actions[name].reversible == True`, OR git versioning makes it revertible
+(`git_recoverable`, passed in by the caller). This is the HARD FLOOR enforced here in
+code — a mis-configured allow-list still cannot auto-run an irreversible action unless
+git provides a real undo for it.
 
 Every verdict (auto-run or human) flows through `decide()`, which writes the
 `decision`, runs the action (approve/auto only), and writes the `outcome`. A future
@@ -16,11 +18,15 @@ from .records import Record, DECISION, OUTCOME
 from .store import Store
 
 
-def can_auto_run(name: str, allow_list: list[str], actions: dict[str, Action]) -> bool:
+def can_auto_run(name: str, allow_list: list[str], actions: dict[str, Action],
+                 *, git_recoverable: bool = False) -> bool:
     act = actions.get(name)
-    if act is None:
+    if act is None or name not in allow_list:
         return False
-    return name in allow_list and act.reversible is True  # hard floor on reversible
+    # hard floor: auto-run only what is recoverable — honestly reversible, or made
+    # revertible by git versioning (git_recoverable). A misconfigured allow-list still
+    # cannot auto-run an irreversible action without a real undo.
+    return act.reversible is True or git_recoverable
 
 
 def decide(store: Store, actions: dict[str, Action], *, domain: str, run_id: str,

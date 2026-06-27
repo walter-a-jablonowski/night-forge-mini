@@ -110,12 +110,12 @@ classifier required, because every change is recoverable.
 
 **Effort:** L — new web connector (+ optional search-API key), several file-shaped actions
 including destructive ones, a seed site, and a config-driven goal. Phasing:
-- **(0) core: git-recoverable floor — the first step of this pack.** Relax the gate's
-  reversible hard floor to `reversible OR git_recoverable` (see "Default mode"), with the
-  per-action-commit guard and the "git unhealthy → hold" fallback. Deliberately *not* landed
-  with the git integration: it has no consumer until this pack's destructive actions exist,
-  and it can only be tested end-to-end against them (commit → `git revert` → dirty-repo hold).
-  KB stays unaffected (ships git off + no destructive actions allow-listed).
+- **(0) core: git-recoverable floor — DONE.** The gate's hard floor is now
+  `reversible OR git_recoverable` (`gate.can_auto_run`), with `Git.recoverable()`
+  (enabled + `per_action` + repo healthy + clean) re-checked per action, so a dirty repo /
+  failed commit makes destructive actions safely hold. Shipped early via the **KB pack**,
+  which is now its first consumer (`edit_entry` allow-listed + git on) — so the website pack
+  inherits this for free and starts at (1).
 - (1) `pages` connector + `create_page`/`edit_content` on static HTML.
 - (2) layout/design + `remove_page`.
 - (3) web `search` mode.

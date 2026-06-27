@@ -16,7 +16,13 @@ a rollback mechanism. Premature autonomy removes the people who'd catch a wrong
 **Value:** Throughput on safe, repetitive actions without a human curating every
 allow-list entry by hand.
 
-**Adds later:** risk classifier (replaces the static list), reversibility/rollback per
-action type, per-action-type autonomy policy, post-hoc review sampling.
+**Shipped (first instance):** **git-backed autonomy** — the gate floor now accepts
+*git-recoverable* alongside `reversible` (`Git.recoverable()`: enabled + `per_action` +
+repo clean), so an honestly-irreversible action can auto-run because `git revert` is the
+rollback. The KB pack uses it (auto `edit_entry`). This is the rollback mechanism this item
+named as the precondition — without a risk classifier, because every change is recoverable.
+
+**Adds later:** risk classifier (replaces the static list), reversibility/rollback for the
+non-git domains, per-action-type autonomy policy, post-hoc review sampling.
 
 **Effort:** M

@@ -5,7 +5,8 @@ the actions write to. Each action's gate metadata (`risk_level` + `reversible`) 
 Reversibility, honestly declared:
   add_entry / flag_contradiction / mark_stale  -> append-only-ish, reversible
   edit_entry                                    -> overwrites human-curated content => NOT reversible
-                                                   (hard-floored by the gate: can never auto-run)
+                                                   (the gate holds it for approval UNLESS git
+                                                   versioning makes it revertible - see config git)
 `add_entry` is **create-only**: it refuses to overwrite an existing entry (returns an
 error). That refusal is what makes its `reversible: True` honest — overwriting curated
 content is irreversible, so it must go through `edit_entry`, which needs approval. Without
