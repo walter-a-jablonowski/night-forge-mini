@@ -36,16 +36,21 @@ the closed loop producing a tangible, deployable artifact.
 - **analyze** — feeds the LLM: current site (bounded slice of pages/structure), the freshly
   fetched web content, and the config goal -> `{finding, metric, actions}`. Measures a
   pack-owned metric (e.g. `pages`, `goal_coverage` (LLM-judged), `broken_links`).
-- **actions** with honest `risk_level` / `reversible` (the gate's hard floor decides auto-run):
-  | action | reversible | gate behavior |
+- **actions** with honest `risk_level` / `reversible`. Default gate behavior below assumes
+  this pack's **autonomous default** (git-backed; see "Default mode"). The actions stay
+  honestly `reversible: false`; git-recoverable is what lets them auto-run:
+  | action | reversible | gate behavior (autonomous default) |
   |---|---|---|
-  | `create_page` (create-only, refuses to overwrite) | true | allow-listable -> auto-run |
-  | `edit_content` (overwrites a page body) | **false** | always held for approval |
-  | `change_layout` / `change_design` (templates/CSS) | **false** | always held for approval |
-  | `remove_page` (deletes a file) | **false** | always held for approval |
+  | `create_page` (create-only, refuses to overwrite) | true | auto-run (reversible) |
+  | `edit_content` (overwrites a page body) | **false** | auto-run via git-recoverable |
+  | `change_layout` / `change_design` (templates/CSS) | **false** | auto-run via git-recoverable |
+  | `remove_page` (deletes a file) | **false** | auto-run via git-recoverable |
 
-  Same honesty rule as the KB pack: the only auto-runnable action is **create-only**; anything
-  that overwrites or deletes curated output is `reversible: false` and held.
+  Unlike the KB pack (which holds everything destructive), here git makes overwrite/delete
+  recoverable, so they auto-run by default. Drop an action from the `allow_list` (or set
+  `supervised: true`) to hold it for human approval instead. If git isn't healthy
+  (disabled / not `per_action` / dirty repo), the destructive actions **hold** rather than
+  risk irreversible loss.
 - **Materialized artifact** = the site files under `data/site/`. The JSONL log stays the
   source of truth; **git** versions `data/site/` and can push to a hosting remote.
 
@@ -64,7 +69,40 @@ the closed loop producing a tangible, deployable artifact.
 - **Goal/metric:** how the LLM measures "improvement" against a free-text config goal
   (LLM-as-judge score vs concrete checks like link/coverage counts).
 
+## Default mode: self-developing site (git-backed autonomy)
+**This pack is autonomous by default** — the LLM develops the site on its own, with git as
+the undo. Human approval is **optional** (opt-in), not the norm. It needs **no action-shape
+change**: the actions stay honestly `reversible: false`. The mechanism is the existing
+allow-list plus one **core** change — the gate's *reversible hard floor* also accepts
+*git-recoverable* as satisfying reversibility:
+```
+auto-run when  name in allow_list
+               AND ( act.reversible OR git_recoverable )
+git_recoverable = git.enabled AND granularity == per_action AND repo clean AND git covers repo_dir
+```
+So "autonomous by default" is just the **shipped config**: git enabled, `per_action`, and the
+destructive actions (`edit_content`, `change_layout`, `remove_page`) in the `allow_list`.
+Nothing auto-runs that isn't allow-listed (default-deny holds); git is what makes those
+destructive actions safe to allow-list.
+
+**Opting back into human approval** (when wanted):
+- per action — drop it from the `allow_list` (existing mechanism → that action holds), or
+- globally — a `supervised: true` switch that forces every action to hold regardless.
+
+Requirements so git is a genuine undo (else fall back to holding, not silent data loss):
+- **`granularity: per_action`** so each change is independently `git revert`-able.
+- **Refuse** autonomous auto-run unless git is enabled and the repo is clean/committed (the
+  per-run commit keeps the last-good state in git by induction).
+- A **commit failure stops** the autonomous chain (a *push* failure is fine — local commit is
+  the undo point).
+
+This is the first concrete, low-risk instance of **autonomous-actions** (earned autonomy):
+git supplies the rollback mechanism that backlog item names as the precondition — no risk
+classifier required, because every change is recoverable.
+
 ## Depends on / pairs with
+- **autonomous-actions** — git-backed autonomy (above) is its first concrete instance; git is
+  the rollback substrate that item requires.
 - **git integration** (DONE) — versioning + push of `data/site/`.
 - **bounded-retrieval** (DONE) — bound the site context fed to the model, like the KB.
 - **approval-ui** / **stale-edit-guard** — diffs + lost-update protection matter more here
