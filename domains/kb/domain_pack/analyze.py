@@ -3,12 +3,15 @@
 The pack's analyze owns BOTH the ingest-context (the KB index) AND the metric
 measurement for this domain — the blank core just records whatever metric it returns.
 Real mode asks the model for a JSON proposal; `--fake-llm` mode is deterministic so the
-loop runs offline. Both return the same structure.
+loop runs offline. Both return the same structure. Sanitizing the model's action list
+is the CORE's job (`sanitize_actions` in night_forge_mini.pack), not this pack's —
+this module only has to survive raw output long enough to hand it back.
 
 Bounded context (idea_2 "never the full store"): the model sees only a **relevant slice**
 of the KB — the top `context_max` entries by keyword overlap with the incoming snippets —
-so context size is capped no matter how large the KB grows. (Recent findings are already
-bounded by the core's `recent_runs`.)
+so context size is capped no matter how large the KB grows. The `history` the core hands
+in (findings, metric trend, human rejections, failed actions) is already bounded by
+`recent_runs` and closes the loop: the model is told what was rejected and what failed.
 """
 from __future__ import annotations
 
@@ -29,23 +32,24 @@ You may ONLY propose these actions: {actions}.
 Return STRICT JSON only:
 {{"finding": "<one sentence>",
   "actions": [{{"name": "...", "target": "...", "rationale": "...", "payload": {{...}}}}]}}
-Prefer add_entry for genuinely new information; reuse existing ids (from the index) for edits/flags."""
+Prefer add_entry for genuinely new information; reuse existing ids (from the index) for edits/flags.
+Do NOT re-propose actions the human rejected, and do not repeat actions that recently failed."""
 
 
 def analyze(model, *, kb: KnowledgeBase, goal: str, snippets: list[dict],
-            recent_findings: list[str], context_max: int = 20) -> dict[str, Any]:
+            history: dict[str, list], context_max: int = 20) -> dict[str, Any]:
     kb_index = kb.index()
 
     if model.fake:
         # fake routing needs the full id set (add vs edit), not a slice — no model, no token budget.
-        actions = _fake_actions(kb_index, snippets)
+        actions: Any = _fake_actions(kb_index, snippets)
         finding = f"{len(snippets)} new snippet(s); {len(actions)} proposed [fake-llm]"
         model_label = "fake-llm"
     else:
         context_index = _relevant_slice(kb_index, snippets, context_max)
-        user = _render_context(goal, context_index, snippets, recent_findings, total=len(kb_index))
+        user = _render_context(goal, context_index, snippets, history, total=len(kb_index))
         result = model.complete_json(SYSTEM.format(goal=goal, actions=sorted(ACTIONS)), user)
-        actions = _normalize(result.get("actions", []))
+        actions = result.get("actions")  # raw model output — the core sanitizes it
         finding = str(result.get("finding") or "")
         model_label = model.label()
 
@@ -83,30 +87,17 @@ def _fake_actions(kb_index: list[dict], snippets: list[dict]) -> list[dict]:
     return actions
 
 
-def _stamp_edit_base(kb: KnowledgeBase, actions: list[dict]) -> None:
+def _stamp_edit_base(kb: KnowledgeBase, actions: Any) -> None:
     """Record the current body fingerprint on each proposed edit_entry, so `edit_entry` can
-    refuse a stale overwrite at approval time (optimistic concurrency). See stale-edit-guard."""
-    for a in actions:
-        if a.get("name") == "edit_entry" and a.get("target"):
-            a.setdefault("payload", {})
-            a["payload"].setdefault("base", kb.fingerprint(a["target"]))
-
-
-def _normalize(actions: Any) -> list[dict]:
-    # Tolerant of malformed model output: a non-list (null / "none" / dict) or any
-    # non-dict item becomes nothing, so a bad proposal is an empty action list — not
-    # a mid-run crash. _normalize is the sanitizing boundary for model output.
-    out = []
+    refuse a stale overwrite at approval time (optimistic concurrency). See stale-edit-guard.
+    Defensive on shape: `actions` is raw model output here (the core sanitizes it later)."""
     if not isinstance(actions, list):
-        return out
+        return
     for a in actions:
-        if not isinstance(a, dict) or a.get("name") not in ACTIONS:
-            continue
-        a.setdefault("action_id", new_id("act"))
-        a.setdefault("payload", {})
-        a.setdefault("rationale", "")
-        out.append(a)
-    return out
+        if isinstance(a, dict) and a.get("name") == "edit_entry" and a.get("target"):
+            if not isinstance(a.get("payload"), dict):
+                a["payload"] = {}
+            a["payload"].setdefault("base", kb.fingerprint(str(a["target"])))
 
 
 _TOKEN = re.compile(r"[a-z0-9]+")
@@ -128,12 +119,29 @@ def _relevant_slice(kb_index: list[dict], snippets: list[dict], limit: int) -> l
     return ranked[:limit]
 
 
-def _render_context(goal: str, kb_index, snippets, recent_findings, total: int | None = None) -> str:
+def _render_context(goal: str, kb_index, snippets, history: dict[str, list],
+                    total: int | None = None) -> str:
     head = "CURRENT KB INDEX"
     if total is not None and len(kb_index) < total:
         head += f" (relevant slice: {len(kb_index)} of {total})"
     idx = "\n".join(f"- {e['id']}: {e['title']} — {e['preview']}" for e in kb_index) or "(empty)"
     snips = "\n\n".join(f"[{s['id']} from {s['source']}]\n{s['text']}" for s in snippets)
-    recent = "\n".join(f"- {f}" for f in recent_findings) or "(none)"
-    return (f"GOAL: {goal}\n\n{head}:\n{idx}\n\n"
-            f"RECENT FINDINGS:\n{recent}\n\nNEW SNIPPETS:\n{snips}")
+    recent = "\n".join(f"- {f}" for f in history.get("findings", [])) or "(none)"
+
+    parts = [f"GOAL: {goal}", f"{head}:\n{idx}"]
+    metrics = history.get("metrics", [])
+    if metrics:
+        trend = "\n".join("- " + "  ".join(f"{k}={v}" for k, v in m.items()) for m in metrics)
+        parts.append(f"METRIC HISTORY (oldest first — are we improving toward the goal?):\n{trend}")
+    parts.append(f"RECENT FINDINGS:\n{recent}")
+    rejections = history.get("rejections", [])
+    if rejections:
+        rej = "\n".join(f"- {r['name']} {r['target']} — was proposed because: {r['rationale']}"
+                        for r in rejections)
+        parts.append(f"REJECTED BY THE HUMAN (do NOT re-propose these):\n{rej}")
+    failures = history.get("failures", [])
+    if failures:
+        fail = "\n".join(f"- {f['name']} {f['target']} — failed: {f['detail']}" for f in failures)
+        parts.append(f"RECENTLY FAILED ACTIONS (fix the cause or avoid):\n{fail}")
+    parts.append(f"NEW SNIPPETS:\n{snips}")
+    return "\n\n".join(parts)

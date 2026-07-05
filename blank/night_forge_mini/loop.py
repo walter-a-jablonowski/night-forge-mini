@@ -12,7 +12,7 @@ from typing import Any
 from .gate import can_auto_run, decide
 from .git_sync import Git
 from .llm import ModelWrapper
-from .pack import Pack
+from .pack import Pack, sanitize_actions
 from .records import Record, new_id, now_iso, INPUT, ANALYSIS, PROPOSAL
 from .store import Store
 
@@ -44,27 +44,37 @@ class Engine:
                                           "snippet_ids": [s["id"] for s in snippets],
                                           "snippets": snippets}))
 
-        # (2) Ingest (generic history) + (3) Analyze (pack builds context + measures metric)
-        recent_findings = [r.payload.get("finding", "") for r in self.store.of_type(ANALYSIS)][-self.cfg.recent_runs:]
+        # (2) Ingest — the closed loop: not just past findings, but also what the human
+        # rejected, what failed, and the metric trend, so the next proposal learns from it.
+        n = self.cfg.recent_runs
+        history = {"findings": self.store.recent_findings(n),
+                   "metrics": self.store.recent_metrics(n),
+                   "rejections": self.store.recent_rejections(n),
+                   "failures": self.store.recent_failures(n)}
+
+        # (3) Analyze (pack builds context + measures metric)
         start = now_iso()
         result = self.pack.analyze(self.model, goal=self.pack.goal,
-                                   snippets=snippets, recent_findings=recent_findings)
-        metric_value = result.get("metric", {})
+                                   snippets=snippets, history=history)
+        if not isinstance(result, dict):
+            result = {}
+        finding = str(result.get("finding") or "")
+        metric_value = result.get("metric") if isinstance(result.get("metric"), dict) else {}
         self.store.append(Record(run_id=run_id, domain=domain, type=ANALYSIS,
                                  start_ts=start, end_ts=now_iso(),
-                                 payload={"finding": result["finding"], "metric": metric_value,
+                                 payload={"finding": finding, "metric": metric_value,
                                           "goal": self.pack.goal, "model": result.get("model", "")}))
 
-        # (4) Propose — tag each action with the pack's honest risk_level + reversible
-        actions = result["actions"]
+        # (4) Propose — the core sanitizes the model output (never trust it): malformed
+        # actions are dropped-but-logged, risk_level/reversible always come from the pack.
+        actions, dropped = sanitize_actions(result.get("actions"), self.pack.actions)
         for a in actions:
             a["domain"] = domain
-            act = self.pack.actions.get(a["name"])
-            if act is not None:
-                a.setdefault("risk_level", act.risk_level)
-                a["reversible"] = act.reversible
+        proposal_payload: dict[str, Any] = {"actions": actions}
+        if dropped:
+            proposal_payload["dropped"] = dropped
         self.store.append(Record(run_id=run_id, domain=domain, type=PROPOSAL,
-                                 payload={"actions": actions}))
+                                 payload=proposal_payload))
 
         # (5) Gate (per action)
         ran, pending, git_results = [], [], []
@@ -89,7 +99,7 @@ class Engine:
             git_results.append(gr)
 
         return {"status": "ok", "run_id": run_id, "captured": len(snippets),
-                "finding": result["finding"], "metric": metric_value,
+                "finding": finding, "metric": metric_value,
                 "model": result.get("model", ""), "ran": ran, "pending": pending,
                 "git": git_results}
 

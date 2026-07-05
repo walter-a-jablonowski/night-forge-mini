@@ -27,8 +27,11 @@ Without a `domain_pack/` present, the core refuses to run and tells you to drop 
 
 ## What's core vs. pack
 - **Core (this package):** loop runner, append-only JSONL store (the audit log + source of
-  truth), approval gate (reversible hard floor), record schema, the thin model wrapper, and
-  the `pack.py` seam.
+  truth), approval gate (reversible hard floor), record schema, the thin model wrapper, the
+  `pack.py` seam, and the model-output sanitizer (malformed actions are dropped-but-logged;
+  `risk_level`/`reversible` always come from the pack, never the model). Each run also feeds
+  a bounded `history` (findings, metric trend, human rejections, failed actions) back into
+  the pack's analyze — that is what closes the loop.
 - **Pack (`domain_pack/`):** the connector(s), the goal, the analysis strategy (which also
   measures the domain's metric), and the actions (each with honest `risk_level`/`reversible`).
 

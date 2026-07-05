@@ -96,7 +96,9 @@ class Pack:
 ---
 
 ## Metric & ingest move into the pack (resolves the old "B")
-`pack.analyze(model, goal, snippets, recent_findings, store)` returns `{finding, metric, actions}`.
+`pack.analyze(model, *, goal, snippets, history)` returns `{finding, metric, actions}` —
+`history` = `{findings, metrics, rejections, failures}` from past runs (bounded by `recent_runs`);
+the core sanitizes the returned `actions` (`sanitize_actions`) before gating.
 The KB pack measures `kb_entries`/`stale` and builds its own `kb_index` **inside** analyze. The core
 just **records** whatever metric the pack returns. Consequences:
 - The metric definition + measurement become **pack-owned** (fixes the old dead `config.metric`).

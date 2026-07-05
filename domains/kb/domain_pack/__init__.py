@@ -24,8 +24,8 @@ def build_pack(cfg: Config) -> Pack:
     actions = build_actions(kb)
     context_max = int(cfg.get("kb_context_max", 20))  # bound the KB context fed to the model
 
-    def analyze(model, *, goal, snippets, recent_findings):
+    def analyze(model, *, goal, snippets, history):
         return analyze_mod.analyze(model, kb=kb, goal=goal, snippets=snippets,
-                                   recent_findings=recent_findings, context_max=context_max)
+                                   history=history, context_max=context_max)
 
     return Pack(domain=DOMAIN, goal=GOAL, connector=connector, actions=actions, analyze=analyze)
