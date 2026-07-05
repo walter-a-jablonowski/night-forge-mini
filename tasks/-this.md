@@ -62,7 +62,13 @@ Next
 
 - [x] Beside the gaps we fixed how do you like this system in principle? Is the basic app principle what you would implement if you had to start a similar system from scratch or would you do a different system or would you change only parts of it?
 
-- [ ] tasks/review
+- tasks/review
+  
+  - [x] `structured-output.md`   | S      | anytime — do first, de-risks the next one                                                           |
+  - [ ] `agentic-analyze.md`     | M→L    | the one real architectural evolution; after structured-output                                       |
+  - [ ] `metric-as-objective.md` | M      | anytime; also the substrate for drift-detection / roi-measurement                                   |
+  - [ ] `sqlite-store.md`        | M      | triggered: when scheduler-daemon or approval-ui adds a second writer                                |
+  - [ ] `core-as-package.md`     | S      | triggered: when a second real installation exists (the `__version__` first step is worth doing now) |
 
 - Minor
   - LLM wrapper has no retry/timeout

@@ -1,6 +1,10 @@
 # Structured Output — replace regex-JSON extraction
 
-**From the 2026-07-05 core review.**
+**Status: DONE (2026-07-05).** `complete_json(system, user, schema=None)` sends the schema
+as `response_format: json_schema`; a provider 400/422 falls back to plain completion +
+extraction and is remembered per process. Canonical schema: `pack.proposal_schema()`
+(action-name enum + extensible payload part); kb pack passes it. Verified live against
+OpenRouter/gemini-3-flash (schema accepted, no fallback). Tests: `tests/test_llm.py`.
 
 **What:** Stop parsing the proposal JSON out of prose with `_extract_json` (regex over the
 completion text in `llm.py`). Use the provider's native mechanism instead:

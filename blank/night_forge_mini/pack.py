@@ -51,6 +51,37 @@ class Pack:
     analyze: Callable[..., dict[str, Any]]
 
 
+def proposal_schema( action_names: list[str] | None = None,
+                     payload_schema: dict | None = None ) -> dict:
+    """The one canonical JSON schema for an analyze proposal, for
+    `ModelWrapper.complete_json(..., schema=...)` (native structured output).
+    `action_names` constrains `name` to the pack's actions via enum; a pack may
+    extend the free-form `payload` part with its own `payload_schema`."""
+    name: dict[str, Any] = {"type": "string"}
+    if action_names:
+        name["enum"] = list(action_names)
+    return {
+        "type": "object",
+        "properties": {
+            "finding": {"type": "string"},
+            "actions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": name,
+                        "target": {"type": "string"},
+                        "rationale": {"type": "string"},
+                        "payload": payload_schema or {"type": "object"},
+                    },
+                    "required": ["name", "target", "rationale", "payload"],
+                },
+            },
+        },
+        "required": ["finding", "actions"],
+    }
+
+
 def sanitize_actions( raw: Any, actions: dict[str, Action] ) -> tuple[list[dict], list[Any]]:
     """The sanitizing boundary for model output — enforced by the core, not the pack.
 

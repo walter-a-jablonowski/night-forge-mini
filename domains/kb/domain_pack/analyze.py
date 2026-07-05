@@ -18,9 +18,13 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from night_forge_mini.pack import proposal_schema
 from night_forge_mini.records import new_id
 
 from .actions import ACTIONS, KnowledgeBase, slug
+
+# Native structured output: name constrained to this pack's actions (core owns the shape).
+SCHEMA = proposal_schema(sorted(ACTIONS))
 
 SYSTEM = """You curate a knowledge base of markdown entries from incoming text snippets.
 Goal: {goal}
@@ -48,7 +52,8 @@ def analyze(model, *, kb: KnowledgeBase, goal: str, snippets: list[dict],
     else:
         context_index = _relevant_slice(kb_index, snippets, context_max)
         user = _render_context(goal, context_index, snippets, history, total=len(kb_index))
-        result = model.complete_json(SYSTEM.format(goal=goal, actions=sorted(ACTIONS)), user)
+        result = model.complete_json(SYSTEM.format(goal=goal, actions=sorted(ACTIONS)), user,
+                                     schema=SCHEMA)
         actions = result.get("actions")  # raw model output — the core sanitizes it
         finding = str(result.get("finding") or "")
         model_label = model.label()
