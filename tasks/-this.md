@@ -65,11 +65,11 @@ Next
 - tasks/review
   
   - [x] `structured-output.md`   | S      | anytime — do first, de-risks the next one                                                           |
-  - [ ] `agentic-analyze.md`     | M→L    | the one real architectural evolution; after structured-output                                       |
+  - [x] `agentic-analyze.md`     | M→L    | the one real architectural evolution; after structured-output                                       |
 
-    - limit effort good idea?
+    - [ ] limit effort good idea?
 
-  - [ ] `metric-as-objective.md` | M      | anytime; also the substrate for drift-detection / roi-measurement                                   |
+  - [x] `metric-as-objective.md` | M      | anytime; also the substrate for drift-detection / roi-measurement                                   |
   - [ ] `sqlite-store.md`        | M      | triggered: when scheduler-daemon or approval-ui adds a second writer                                |
   - [ ] `core-as-package.md`     | S      | triggered: when a second real installation exists (the `__version__` first step is worth doing now) |
 

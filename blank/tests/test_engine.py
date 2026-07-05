@@ -86,7 +86,8 @@ def test_history_carries_findings_metrics_rejections_failures( tmp_path ):
   eng = make_engine(tmp_path, analyze, items, actions=make_actions(safe_run=fail))
 
   r = eng.run_once()
-  assert seen_history == {'findings': [], 'metrics': [], 'rejections': [], 'failures': []}
+  assert seen_history == {'findings': [], 'metrics': [], 'rejections': [],
+                          'failures': [], 'impact': []}
   held = r['pending'][0]
   eng.reject(held['action_id'])
 
@@ -97,6 +98,49 @@ def test_history_carries_findings_metrics_rejections_failures( tmp_path ):
   assert seen_history['rejections'] == [{'name': 'danger_act', 'target': 'held-1',
                                          'rationale': 'because'}]
   assert seen_history['failures'] == [{'name': 'safe_act', 'target': 't1', 'detail': 'boom'}]
+
+
+def test_impact_reaches_history_two_runs_later( tmp_path ):
+  # metric is measured AT analyze, so run N's actual delta only exists once run N+1
+  # analyzed -> the report about run 1 appears in run 3's history.
+  items = [{'id': 's1', 'text': 'one', 'source': 'x'}]
+  seen_history = {}
+  metrics = iter([{'m': 1}, {'m': 3}, {'m': 3}])
+
+  def analyze(model, *, goal, snippets, history):
+    seen_history.clear()
+    seen_history.update(history)
+    a = proposal_action('safe_act')
+    a['expected_impact'] = {'m': 2}
+    return {'finding': 'f', 'metric': next(metrics), 'actions': [a]}
+
+  eng = make_engine(tmp_path, analyze, items)
+  eng.run_once()
+  items.append({'id': 's2', 'text': 'two', 'source': 'x'})
+  eng.run_once()
+  assert seen_history['impact'] == []                 # run-1's delta not measurable yet
+  items.append({'id': 's3', 'text': 'three', 'source': 'x'})
+  r3 = eng.run_once()
+  assert len(seen_history['impact']) == 1
+  assert seen_history['impact'][0]['predicted'] == {'m': 2}
+  assert seen_history['impact'][0]['actual'] == {'m': 2}
+
+
+def test_expected_impact_is_sanitized_to_numbers( tmp_path ):
+  items = [{'id': 's1', 'text': 'one', 'source': 'x'}]
+
+  def analyze(model, *, goal, snippets, history):
+    a1 = proposal_action('safe_act')
+    a1['expected_impact'] = {'m': 1, 'junk': 'much', 'flag': True}
+    a2 = proposal_action('safe_act', 't2')
+    a2['expected_impact'] = 'lots'
+    return {'finding': 'f', 'metric': {}, 'actions': [a1, a2]}
+
+  eng = make_engine(tmp_path, analyze, items)
+  r = eng.run_once()
+  acts = [item['action'] for item in r['ran']]
+  assert acts[0]['expected_impact'] == {'m': 1}       # numeric keys only, bools out
+  assert 'expected_impact' not in acts[1]             # non-dict garbage removed
 
 
 def test_tool_trace_is_logged_as_spans_under_the_analysis( tmp_path ):

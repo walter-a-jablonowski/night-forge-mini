@@ -151,3 +151,36 @@ class Store:
                             "target": a.get("target", ""),
                             "detail": r.payload.get("detail", "")})
         return out[-n:]
+
+    def impact_report(self, n: int) -> list[dict]:
+        """Predicted vs. actual (metric-as-objective): per past run, the summed
+        `expected_impact` of its ran-ok actions vs. the measured metric delta to the NEXT
+        run's analysis (metric is measured at analyze, so run N's effect shows in metric
+        N+1). Honest attribution floor: per-run deltas only — inputs and external changes
+        land in the same delta, no per-action credit is claimed. Runs whose actions carry
+        no `expected_impact` are skipped, so a pack that never opts in gets []."""
+        analyses = self.of_type(ANALYSIS)
+        if len(analyses) < 2:
+            return []
+        ok_ids = {r.parent_id for r in self.of_type(OUTCOME)
+                  if r.payload.get("status") == "ok"}
+        by_run: dict[str, list[dict]] = {}
+        for r in self.of_type(PROPOSAL):
+            by_run.setdefault(r.run_id, []).extend(r.payload.get("actions", []))
+
+        out = []
+        for cur, nxt in zip(analyses, analyses[1:]):
+            predicted: dict[str, float] = {}
+            for a in by_run.get(cur.run_id, []):
+                if a.get("action_id") not in ok_ids:
+                    continue
+                for k, v in (a.get("expected_impact") or {}).items():
+                    predicted[k] = predicted.get(k, 0) + v
+            if not predicted:
+                continue
+            m0 = cur.payload.get("metric") or {}
+            m1 = nxt.payload.get("metric") or {}
+            actual = {k: m1[k] - m0[k] for k in predicted
+                      if isinstance(m0.get(k), (int, float)) and isinstance(m1.get(k), (int, float))}
+            out.append({"run_id": cur.run_id, "predicted": predicted, "actual": actual})
+        return out[-n:]

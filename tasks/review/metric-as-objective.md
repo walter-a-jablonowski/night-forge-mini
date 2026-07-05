@@ -1,5 +1,14 @@
 # Metric as Objective — predicted vs. actual impact
 
+**Status: DONE (2026-07-05).** Actions may carry `expected_impact` ({metric_key: number},
+sanitized numeric-only in `sanitize_actions`, optional in `proposal_schema`).
+`Store.impact_report(n)` sums the expected impacts of each run's ran-ok actions and
+compares them to the measured metric delta at the NEXT analysis (per-run deltas only —
+honest attribution). The report is fed into `history["impact"]`; kb pack prompts for
+predictions and renders "predicted vs actual (calibrate!)". Verified offline end-to-end
+(predicted kb_entries +2 -> actual +2). Note: the report about run N first appears in
+run N+2's history, because run N's delta is only measurable at run N+1's analyze.
+
 **From the 2026-07-05 core review.** The difference between "a loop that remembers" and
 "a loop that optimizes."
 

@@ -4,7 +4,7 @@ A pack provides exactly the "four things" (see tasks/resources/v1-blank-sys-and-
   1. a connector  — `fetch(seen_ids) -> artifacts`
   2. goal         — what "good" means for the domain
   3. analysis     — `(model, *, goal, snippets, history) -> {finding, metric, actions}`
-                    `history` = {findings, metrics, rejections, failures} from past runs
+                    `history` = {findings, metrics, rejections, failures, impact} from past runs
   4. actions      — name -> Action, each carrying honest `risk_level` + `reversible` + `run`
 
 The core sanitizes whatever `analyze` returns (`sanitize_actions`): malformed model
@@ -73,6 +73,12 @@ def proposal_schema( action_names: list[str] | None = None,
                         "target": {"type": "string"},
                         "rationale": {"type": "string"},
                         "payload": payload_schema or {"type": "object"},
+                        "expected_impact": {
+                            "type": "object",
+                            "description": "optional: expected metric change if this action "
+                                           "runs, e.g. {\"stale\": -1}",
+                            "additionalProperties": {"type": "number"},
+                        },
                     },
                     "required": ["name", "target", "rationale", "payload"],
                 },
@@ -106,5 +112,13 @@ def sanitize_actions( raw: Any, actions: dict[str, Action] ) -> tuple[list[dict]
         a["payload"] = a["payload"] if isinstance(a.get("payload"), dict) else {}
         a["risk_level"] = act.risk_level
         a["reversible"] = act.reversible
+        # optional metric-as-objective claim: keep numeric entries only (bools are ints —
+        # exclude them), drop the field entirely when nothing valid remains.
+        ei = a.pop("expected_impact", None)
+        if isinstance(ei, dict):
+            ei = {k: v for k, v in ei.items()
+                  if isinstance(v, (int, float)) and not isinstance(v, bool)}
+            if ei:
+                a["expected_impact"] = ei
         ok.append(a)
     return ok, dropped

@@ -53,7 +53,10 @@ When you are done reading, return STRICT JSON only (no more tool calls):
 {{"finding": "<one sentence>",
   "actions": [{{"name": "...", "target": "...", "rationale": "...", "payload": {{...}}}}]}}
 Prefer add_entry for genuinely new information; reuse existing ids (from the index) for edits/flags.
-Do NOT re-propose actions the human rejected, and do not repeat actions that recently failed."""
+Do NOT re-propose actions the human rejected, and do not repeat actions that recently failed.
+Each action may state "expected_impact": the metric change you expect if it runs, using the
+metric keys kb_entries and stale (e.g. add_entry -> {{"kb_entries": 1}}, mark_stale ->
+{{"stale": 1}}). Past predicted-vs-actual results are shown - calibrate against them."""
 
 
 def analyze(model, *, kb: KnowledgeBase, goal: str, snippets: list[dict],
@@ -109,6 +112,7 @@ def _fake_actions(kb_index: list[dict], snippets: list[dict]) -> list[dict]:
                 "target": target,
                 "rationale": "new snippet not yet represented in the KB",
                 "payload": {"title": first[:80], "body": s["text"], "source": s["source"]},
+                "expected_impact": {"kb_entries": 1},  # exercises predicted-vs-actual offline
             })
     return actions
 
@@ -159,6 +163,13 @@ def _render_context(goal: str, kb_index, snippets, history: dict[str, list],
     if metrics:
         trend = "\n".join("- " + "  ".join(f"{k}={v}" for k, v in m.items()) for m in metrics)
         parts.append(f"METRIC HISTORY (oldest first — are we improving toward the goal?):\n{trend}")
+    impact = history.get("impact", [])
+    if impact:
+        def fmt( d ):
+            return "  ".join(f"{k}{v:+g}" for k, v in d.items()) or "(none measurable)"
+        rows = "\n".join(f"- predicted {fmt(i['predicted'])} -> actual {fmt(i['actual'])}"
+                         for i in impact)
+        parts.append(f"YOUR PREDICTED vs ACTUAL metric impact (calibrate!):\n{rows}")
     parts.append(f"RECENT FINDINGS:\n{recent}")
     rejections = history.get("rejections", [])
     if rejections:

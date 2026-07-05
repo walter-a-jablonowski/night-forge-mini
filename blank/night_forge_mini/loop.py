@@ -50,7 +50,8 @@ class Engine:
         history = {"findings": self.store.recent_findings(n),
                    "metrics": self.store.recent_metrics(n),
                    "rejections": self.store.recent_rejections(n),
-                   "failures": self.store.recent_failures(n)}
+                   "failures": self.store.recent_failures(n),
+                   "impact": self.store.impact_report(n)}
 
         # (3) Analyze (pack builds context + measures metric)
         start = now_iso()

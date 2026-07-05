@@ -30,8 +30,10 @@ Without a `domain_pack/` present, the core refuses to run and tells you to drop 
   truth), approval gate (reversible hard floor), record schema, the thin model wrapper, the
   `pack.py` seam, and the model-output sanitizer (malformed actions are dropped-but-logged;
   `risk_level`/`reversible` always come from the pack, never the model). Each run also feeds
-  a bounded `history` (findings, metric trend, human rejections, failed actions) back into
-  the pack's analyze — that is what closes the loop.
+  a bounded `history` (findings, metric trend, human rejections, failed actions, and the
+  predicted-vs-actual metric impact of past runs) back into the pack's analyze — that is
+  what closes the loop. Actions may state an `expected_impact` (metric-as-objective); the
+  next-but-one run reports how the prediction compared to the measured delta.
 - **Pack (`domain_pack/`):** the connector(s), the goal, the analysis strategy (which also
   measures the domain's metric), and the actions (each with honest `risk_level`/`reversible`).
 
