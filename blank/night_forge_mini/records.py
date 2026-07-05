@@ -14,10 +14,11 @@ from . import SCHEMA_V
 # Closed enum for v1 — extend the enum, never the shape.
 INPUT = "input"          # Capture:  fetched snippets + source cursor (dedup watermark)
 ANALYSIS = "analysis"    # Analyze:  finding vs goal + the run's measured metric value
+TOOL_CALL = "tool_call"  # Analyze:  one read-only tool call the model made (span under analysis)
 PROPOSAL = "proposal"    # Propose:  actions[] with risk_level + reversible
 DECISION = "decision"    # Gate:     auto-run (allow-list + reversible) or human verdict
 OUTCOME = "outcome"      # after an action runs: result / status ok|error
-TYPES = {INPUT, ANALYSIS, PROPOSAL, DECISION, OUTCOME}
+TYPES = {INPUT, ANALYSIS, TOOL_CALL, PROPOSAL, DECISION, OUTCOME}
 
 
 def now_iso() -> str:

@@ -23,9 +23,11 @@ def build_pack(cfg: Config) -> Pack:
     connector = TextFolderConnector("text-folder", source)
     actions = build_actions(kb)
     context_max = int(cfg.get("kb_context_max", 20))  # bound the KB context fed to the model
+    tool_steps = int(cfg.get("analyze_tool_steps", 6))  # agentic read budget; 0 = one-shot
 
     def analyze(model, *, goal, snippets, history):
         return analyze_mod.analyze(model, kb=kb, goal=goal, snippets=snippets,
-                                   history=history, context_max=context_max)
+                                   history=history, context_max=context_max,
+                                   tool_steps=tool_steps)
 
     return Pack(domain=DOMAIN, goal=GOAL, connector=connector, actions=actions, analyze=analyze)

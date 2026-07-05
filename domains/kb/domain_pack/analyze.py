@@ -20,11 +20,25 @@ from typing import Any
 
 from night_forge_mini.pack import proposal_schema
 from night_forge_mini.records import new_id
+from night_forge_mini.tools.registry import Tool
 
 from .actions import ACTIONS, KnowledgeBase, slug
 
 # Native structured output: name constrained to this pack's actions (core owns the shape).
 SCHEMA = proposal_schema(sorted(ACTIONS))
+
+
+def _read_entry_tool(kb: KnowledgeBase) -> Tool:
+    """READ-ONLY tool for the agentic loop: the full markdown of one KB entry, so the
+    model reads what it is about to edit instead of guessing from a 120-char preview."""
+    return Tool(name="read_entry",
+                description="Read the FULL markdown of one KB entry by its id (see the "
+                            "index). Always read an entry before proposing edit_entry on it.",
+                run=lambda id="": kb.read(str(id)),
+                params={"type": "object",
+                        "properties": {"id": {"type": "string",
+                                              "description": "entry id from the KB index"}},
+                        "required": ["id"]})
 
 SYSTEM = """You curate a knowledge base of markdown entries from incoming text snippets.
 Goal: {goal}
@@ -33,7 +47,9 @@ You may ONLY propose these actions: {actions}.
   edit_entry(target=existing-id, payload={{body}})                        -- rewrite an entry (will require human approval)
   flag_contradiction(target=existing-id, payload={{note}})                -- note a conflict
   mark_stale(target=existing-id)                                          -- mark outdated
-Return STRICT JSON only:
+You can call the read_entry tool to read any entry in full - ALWAYS read an entry before
+proposing edit_entry on it, and base the new body on what is actually there.
+When you are done reading, return STRICT JSON only (no more tool calls):
 {{"finding": "<one sentence>",
   "actions": [{{"name": "...", "target": "...", "rationale": "...", "payload": {{...}}}}]}}
 Prefer add_entry for genuinely new information; reuse existing ids (from the index) for edits/flags.
@@ -41,7 +57,8 @@ Do NOT re-propose actions the human rejected, and do not repeat actions that rec
 
 
 def analyze(model, *, kb: KnowledgeBase, goal: str, snippets: list[dict],
-            history: dict[str, list], context_max: int = 20) -> dict[str, Any]:
+            history: dict[str, list], context_max: int = 20,
+            tool_steps: int = 6) -> dict[str, Any]:
     kb_index = kb.index()
 
     if model.fake:
@@ -52,8 +69,12 @@ def analyze(model, *, kb: KnowledgeBase, goal: str, snippets: list[dict],
     else:
         context_index = _relevant_slice(kb_index, snippets, context_max)
         user = _render_context(goal, context_index, snippets, history, total=len(kb_index))
-        result = model.complete_json(SYSTEM.format(goal=goal, actions=sorted(ACTIONS)), user,
-                                     schema=SCHEMA)
+        system = SYSTEM.format(goal=goal, actions=sorted(ACTIONS))
+        if tool_steps > 0:  # agentic: model may read entries in full before proposing
+            result = model.run_tools(system, user, tools=[_read_entry_tool(kb)],
+                                     schema=SCHEMA, max_steps=tool_steps)
+        else:               # tool_steps 0 = one-shot mode
+            result = model.complete_json(system, user, schema=SCHEMA)
         actions = result.get("actions")  # raw model output — the core sanitizes it
         finding = str(result.get("finding") or "")
         model_label = model.label()

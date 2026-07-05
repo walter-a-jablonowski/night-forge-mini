@@ -28,6 +28,9 @@ class Tool:
     run: Callable[..., Any]
     requires: list[str] = field(default_factory=list)
     available_check: Callable[[], bool] | None = None
+    # JSON schema of run()'s kwargs — set it to expose the tool to the MODEL via
+    # `ModelWrapper.run_tools` (function-calling needs a declared parameter schema).
+    params: dict[str, Any] | None = None
 
     def available(self) -> bool:
         if self.available_check is not None:

@@ -27,4 +27,8 @@ def fetch_url(url: str, *, timeout: float = 10.0, max_bytes: int = 2_000_000) ->
 
 TOOL = Tool(name="fetch_url",
             description="HTTP(S) GET a URL and return decoded text (stdlib urllib).",
-            run=fetch_url)
+            run=fetch_url,
+            params={"type": "object",
+                    "properties": {"url": {"type": "string",
+                                           "description": "http(s) URL to fetch"}},
+                    "required": ["url"]})

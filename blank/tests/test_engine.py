@@ -4,7 +4,7 @@ import pytest
 from night_forge_mini.config import Config
 from night_forge_mini.loop import Engine
 from night_forge_mini.pack import Action, Pack
-from night_forge_mini.records import PROPOSAL
+from night_forge_mini.records import ANALYSIS, PROPOSAL, TOOL_CALL
 
 
 class StubConnector:
@@ -97,6 +97,25 @@ def test_history_carries_findings_metrics_rejections_failures( tmp_path ):
   assert seen_history['rejections'] == [{'name': 'danger_act', 'target': 'held-1',
                                          'rationale': 'because'}]
   assert seen_history['failures'] == [{'name': 'safe_act', 'target': 't1', 'detail': 'boom'}]
+
+
+def test_tool_trace_is_logged_as_spans_under_the_analysis( tmp_path ):
+  items = [{'id': 's1', 'text': 'one', 'source': 'x'}]
+
+  def analyze(model, *, goal, snippets, history):
+    model._tool_trace.append({'tool': 'read_entry', 'args': {'id': 'vpn'}, 'status': 'ok',
+                              'chars': 42, 'start': 't0', 'end': 't1'})
+    return {'finding': 'f', 'metric': {}, 'actions': []}
+
+  eng = make_engine(tmp_path, analyze, items)
+  eng.run_once()
+  analysis = eng.store.of_type(ANALYSIS)[0]
+  spans = eng.store.of_type(TOOL_CALL)
+  assert len(spans) == 1
+  assert spans[0].parent_id == analysis.id
+  assert spans[0].start_ts == 't0' and spans[0].end_ts == 't1'
+  assert spans[0].payload == {'tool': 'read_entry', 'args': {'id': 'vpn'},
+                              'status': 'ok', 'chars': 42}
 
 
 # --- fix 3: the core sanitizes whatever analyze returns ---------------------

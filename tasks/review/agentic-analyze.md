@@ -1,5 +1,14 @@
 # Agentic Analyze — tool-use loop instead of one-shot completion
 
+**Status: core + kb DONE (2026-07-05).** `ModelWrapper.run_tools(system, user, tools,
+schema, max_steps)` — read-only tool loop (function calling), per-call trace logged as
+`tool_call` spans under the analysis record, budget-exhaustion forces the structured
+proposal, tool errors go back to the model as strings. `Tool` gained a `params` schema
+(built-ins covered). kb pack: `read_entry` tool, `analyze_tool_steps` config (0 = one-shot).
+Verified live: model read the full entry and MERGED an update instead of overwriting.
+Tests: `tests/test_run_tools.py`. **Remains (L):** website-pack adoption, token budget,
+quality eval across runs.
+
 **From the 2026-07-05 core review.** The one architectural decision a from-scratch design
 would make differently; everything else in /blank survives as-is.
 

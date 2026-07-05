@@ -53,6 +53,13 @@ class KnowledgeBase:
     def exists(self, entry_id: str) -> bool:
         return self._file(entry_id).exists()
 
+    def read(self, entry_id: str) -> str:
+        """Full markdown of one entry — the read_entry tool for the agentic analyze."""
+        f = self._file(entry_id)
+        if not f.exists():
+            return f"error: no such entry {entry_id}"
+        return f.read_text(encoding="utf-8")
+
     def index(self) -> list[dict]:
         """Lightweight KB index for context: id + title + first line."""
         out = []

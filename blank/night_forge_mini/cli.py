@@ -218,6 +218,8 @@ def _trace(eng: Engine, run_id: str) -> int:
             children.setdefault(r.parent_id, []).append(r)
     for r in tops:
         _print_rec(r)
+        for c in children.get(r.id, []):             # spans under a top record (tool calls)
+            _print_rec(c, indent="       ")
         if r.type == "proposal":
             for a in r.payload.get("actions", []):
                 aid = a["action_id"]
@@ -234,6 +236,8 @@ def _print_rec(r, indent: str = "  ") -> None:
         extra = r.payload.get("finding", "")
     elif r.type == "proposal":
         extra = f"{len(r.payload.get('actions', []))} action(s)"
+    elif r.type == "tool_call":
+        extra = f"{r.payload.get('tool')}({r.payload.get('args')}) {r.payload.get('status')}"
     elif r.type == DECISION:
         extra = f"{r.payload.get('verdict')} by {r.payload.get('by')}"
     elif r.type == OUTCOME:

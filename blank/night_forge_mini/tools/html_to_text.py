@@ -55,4 +55,8 @@ def html_to_text(html: str) -> str:
 
 TOOL = Tool(name="html_to_text",
             description="Strip HTML to readable plain text (stdlib html.parser).",
-            run=html_to_text)
+            run=html_to_text,
+            params={"type": "object",
+                    "properties": {"html": {"type": "string",
+                                            "description": "HTML source to strip"}},
+                    "required": ["html"]})

@@ -13,7 +13,7 @@ from .gate import can_auto_run, decide
 from .git_sync import Git
 from .llm import ModelWrapper
 from .pack import Pack, sanitize_actions
-from .records import Record, new_id, now_iso, INPUT, ANALYSIS, PROPOSAL
+from .records import Record, new_id, now_iso, INPUT, ANALYSIS, TOOL_CALL, PROPOSAL
 from .store import Store
 
 
@@ -60,10 +60,16 @@ class Engine:
             result = {}
         finding = str(result.get("finding") or "")
         metric_value = result.get("metric") if isinstance(result.get("metric"), dict) else {}
-        self.store.append(Record(run_id=run_id, domain=domain, type=ANALYSIS,
-                                 start_ts=start, end_ts=now_iso(),
-                                 payload={"finding": finding, "metric": metric_value,
-                                          "goal": self.pack.goal, "model": result.get("model", "")}))
+        analysis = self.store.append(Record(run_id=run_id, domain=domain, type=ANALYSIS,
+                                            start_ts=start, end_ts=now_iso(),
+                                            payload={"finding": finding, "metric": metric_value,
+                                                     "goal": self.pack.goal, "model": result.get("model", "")}))
+        # If analyze used the agentic tool loop, log each read as a span under the analysis.
+        for span in self.model.take_tool_trace():
+            self.store.append(Record(run_id=run_id, domain=domain, type=TOOL_CALL,
+                                     parent_id=analysis.id,
+                                     start_ts=span.pop("start", None), end_ts=span.pop("end", None),
+                                     payload=span))
 
         # (4) Propose — the core sanitizes the model output (never trust it): malformed
         # actions are dropped-but-logged, risk_level/reversible always come from the pack.

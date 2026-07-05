@@ -51,6 +51,13 @@ Use one from a pack:
 from night_forge_mini.tools import registry
 text = registry.get("fetch_url").run("https://example.com")
 ```
+
+**Agentic analyze:** a pack's `analyze` may call `model.run_tools(system, user, tools,
+schema, max_steps)` instead of `complete_json` — the model then iterates with the given
+**read-only** tools (a `Tool` needs a `params` JSON schema to be exposable) under a hard
+step budget and ends in the same structured proposal. Write actions still ONLY happen
+through the gate; never hand a mutating tool into the loop. Every tool call is logged as
+a `tool_call` span under the run's analysis record (visible in `trace`).
 A pack registers its own (keyed / heavier) tools inside `build_pack(cfg)` via
 `registry.register(Tool(...))`. A tool needing a secret names the **env-var** in `requires`
 (the key lives in `.env`, like the model providers); `tool.available()` is `False` when it's
