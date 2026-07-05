@@ -49,20 +49,20 @@ Next
   - [ ] fetch_url tool isn't enough for website domain, we need search and fetch
     - Tavily Exa 
 
-We make a review for this system. It is an extensible system where an AI constantly improves an artifact.
+- [x] We make a review for this system. It is an extensible system where an AI constantly improves an artifact.
 
-- /blank: main app
-- /domains: for specific use cases
-- Installation: One domain merged with one domain pack on disk
-- /tasks/-this.md: my current task file
-  - currently developing tools and website domain pack (stopped for reviewing the main app) 
-- /tasks/backog: the backlog
+  - /blank: main app
+  - /domains: for specific use cases
+  - Installation: One domain merged with one domain pack on disk
+  - /tasks/-this.md: my current task file
+    - currently developing tools and website domain pack (stopped for reviewing the main app) 
+  - /tasks/backog: the backlog
 
-Review this system. Is it good as it is or would you improve something? No details or trivial improvements, focus on the main parts. Focus in /blank, the domain packs are less important and still in development.
+  Review this system. Is it good as it is or would you improve something? No details or trivial improvements, focus on the main parts. Focus in /blank, the domain packs are less important and still in development.
 
+- [x] Beside the gaps we fixed how do you like this system in principle? Is the basic app principle what you would implement if you had to start a similar system from scratch or would you do a different system or would you change only parts of it?
 
-Beside the gaps we fixed how do you like this system in principle? Is the basic app principle what you would implement if you had to start a similar system from scratch or would you do a different system or would you change only parts of it?
-
+- [ ] tasks/review
 
 - Minor
   - LLM wrapper has no retry/timeout
