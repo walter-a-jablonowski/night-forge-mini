@@ -1,0 +1,1 @@
+The copy-the-folder deployment model is fine for 1–2 installations, but every core bugfix then has to be hand-copied into every deployment. When a second real installation exists, consider making night_forge_mini a pip-installable dependency of the deploy folder — the Pack seam already supports that
