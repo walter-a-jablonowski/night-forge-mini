@@ -59,16 +59,20 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd in (None, "shell"):
         return _repl(eng)
-    if args.cmd == "run-once":
-        return _run_once(eng)
-    if args.cmd == "inbox":
-        return _inbox(eng)
-    if args.cmd == "approve":
-        return _verdict(eng.approve(args.action_id), "approved")
-    if args.cmd == "reject":
-        return _verdict(eng.reject(args.action_id), "rejected")
-    if args.cmd == "trace":
-        return _trace(eng, args.run_id)
+    try:
+        if args.cmd == "run-once":
+            return _run_once(eng)
+        if args.cmd == "inbox":
+            return _inbox(eng)
+        if args.cmd == "approve":
+            return _verdict(eng.approve(args.action_id), "approved")
+        if args.cmd == "reject":
+            return _verdict(eng.reject(args.action_id), "rejected")
+        if args.cmd == "trace":
+            return _trace(eng, args.run_id)
+    except Exception as e:  # noqa: BLE001 - clean one-line error + exit code, no traceback
+        print(f"error: {type(e).__name__}: {e}", file=sys.stderr)
+        return 1
     return 1
 
 
@@ -107,30 +111,36 @@ def _repl(eng: Engine) -> int:
         cmd, rest = parts[0].lower(), parts[1:]
         if cmd in ("quit", "exit", "q"):
             break
-        elif cmd in ("help", "h", "?"):
-            print(REPL_HELP)
-        elif cmd in ("run", "run-once"):
-            _run_once(eng)
-        elif cmd == "inbox":
-            _inbox(eng)
-        elif cmd in ("approve", "reject"):
-            if not rest:
-                print(f"usage: {cmd} <id|n>")
-                continue
-            aid = _resolve_ref(eng, rest[0])
-            if aid is None:
-                print(f"no pending action '{rest[0]}'")
-            elif cmd == "approve":
-                _verdict(eng.approve(aid), "approved")
+        # A failing command (LLM down, bad model output, ...) must never kill the
+        # session — since failed runs are retryable, "run failed -> run again" is a
+        # normal workflow and has to work within one REPL session.
+        try:
+            if cmd in ("help", "h", "?"):
+                print(REPL_HELP)
+            elif cmd in ("run", "run-once"):
+                _run_once(eng)
+            elif cmd == "inbox":
+                _inbox(eng)
+            elif cmd in ("approve", "reject"):
+                if not rest:
+                    print(f"usage: {cmd} <id|n>")
+                    continue
+                aid = _resolve_ref(eng, rest[0])
+                if aid is None:
+                    print(f"no pending action '{rest[0]}'")
+                elif cmd == "approve":
+                    _verdict(eng.approve(aid), "approved")
+                else:
+                    _verdict(eng.reject(aid), "rejected")
+            elif cmd == "trace":
+                if not rest:
+                    print("usage: trace <run_id>")
+                else:
+                    _trace(eng, rest[0])
             else:
-                _verdict(eng.reject(aid), "rejected")
-        elif cmd == "trace":
-            if not rest:
-                print("usage: trace <run_id>")
-            else:
-                _trace(eng, rest[0])
-        else:
-            print(f"unknown command: {cmd} (try 'help')")
+                print(f"unknown command: {cmd} (try 'help')")
+        except Exception as e:  # noqa: BLE001 - show the reason, keep the session alive
+            print(f"error: {type(e).__name__}: {e}")
     return 0
 
 

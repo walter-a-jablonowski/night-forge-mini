@@ -73,13 +73,13 @@ Next
   - [>] `sqlite-store.md`        | M      | triggered: when scheduler-daemon or approval-ui adds a second writer                                |
   - [>] `core-as-package.md`     | S      | triggered: when a second real installation exists (the `__version__` first step is worth doing now) |
 
-- Minor
+- [x] Minor
 
   - LLM wrapper has no retry/timeout
   - REPL dies on any command exception
   - no tests — though with --fake-llm the deterministic test harness is essentially already built and unused
 
-- [ ] Check website domain pack and backlog tasks for adjustments needed because of the changes we made
+- [ ] Check the website domain pack and backlog tasks for adjustments needed because of the changes we made in the review
 
 
 - [text](backlog/website-domain-pack.md) — captured: `web-source` connector (search|pages), config-sourced goal, actions create_page (reversible, auto-runnable) / edit_content / change_layout / remove_page (all reversible=false → held); site under `data/site/` versioned via the new git integration. Effort L (phased).

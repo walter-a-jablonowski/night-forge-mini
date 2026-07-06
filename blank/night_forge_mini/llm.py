@@ -148,7 +148,12 @@ class ModelWrapper:
         except ImportError as e:  # pragma: no cover
             raise LLMError("openai package not installed; `pip install -r requirements.txt` or use --fake-llm") from e
         key = os.environ.get(self.provider.get("api_key_env", ""), "") or "no-key"
-        self._client = OpenAI(base_url=self.provider["base_url"], api_key=key)
+        # The SDK already retries transient failures (connection errors, 429, 5xx) with
+        # backoff — we only bound the per-request time (its 600s default is far too long
+        # for a loop pass) and make both knobs per-provider config.
+        self._client = OpenAI(base_url=self.provider["base_url"], api_key=key,
+                              timeout=float(self.provider.get("timeout", 120)),
+                              max_retries=int(self.provider.get("max_retries", 2)))
         return self._client
 
 

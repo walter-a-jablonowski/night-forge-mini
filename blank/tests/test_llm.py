@@ -83,3 +83,12 @@ def test_proposal_schema_shape():
 
 def test_extract_json_still_tolerates_fenced_prose():
   assert _extract_json('sure!\n```json\n{"a": 1}\n```') == {'a': 1}
+
+
+def test_client_timeout_and_retries_are_bounded_and_configurable():
+  c = ModelWrapper(PROVIDER)._ensure_client()
+  assert c.timeout == 120.0 and c.max_retries == 2    # sane defaults, not the SDK's 600s
+
+  tuned = dict(PROVIDER, timeout=5, max_retries=0)
+  c = ModelWrapper(tuned)._ensure_client()
+  assert c.timeout == 5.0 and c.max_retries == 0
