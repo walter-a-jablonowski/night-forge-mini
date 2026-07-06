@@ -34,7 +34,14 @@ the closed loop producing a tangible, deployable artifact.
   app is still deferred — see the registry note in the main README.)
 - **Connector** `web-source` — `fetch(seen_ids) -> artifacts`, returning fetched page text as
   snippets. Two modes via config: `search` (query the web) or `pages` (a fixed URL list).
-  Dedup via the same `seen_ids` watermark; re-fetch policy (content hash) TBD.
+  `pages` mode fetches via the core **`read_url`** (Jina Reader → clean markdown snippets,
+  much better model input than raw HTML; `fetch_url`+`html_to_text` as fallback when Jina
+  is unreachable). Dedup via the same `seen_ids` watermark; re-fetch = hash of the returned
+  markdown (snippet id = `url#hash`, so a changed page re-ingests).
+  **Capture vs. read split:** the connector is scheduled *capture* — what's new becomes
+  logged `input` records and drives the watermark; the agentic tools below are on-demand
+  *reads* during analysis — context, logged as `tool_call` spans, never inputs. Same
+  underlying tools, different roles in the loop.
 - **Goal from config** — `build_pack(cfg)` reads `cfg.get("site_goal")` / improvement
   instructions and passes them as the pack's `goal`. (Today `Pack.goal` is a constant; this
   pack makes it config-sourced — no core change, just how the pack builds itself.)
@@ -77,9 +84,10 @@ the closed loop producing a tangible, deployable artifact.
 - **Web fetching deps — resolved → its own task `tool-registry.md` (DONE).** The core has a
   tool registry + `night_forge_mini/tools/` with stdlib built-ins (`fetch_url`,
   `html_to_text`, and since 2026-07-06 **`web_search`** — Tavily/Exa behind one core tool,
-  keys via `.env`), landed **before** this pack. So **`pages` mode uses the core fetcher**
-  and **`search` mode uses the core `web_search`** — the pack registers no search tool of
-  its own. See `tool-registry.md` for the full design and boundaries.
+  keys via `.env` — and **`read_url`** — Jina Reader → markdown, free tier keyless), landed
+  **before** this pack. So **`pages` mode uses the core `read_url`** and **`search` mode
+  uses the core `web_search`** — the pack registers no fetch/search tool of its own.
+  See `tool-registry.md` for the full design and boundaries.
   *Since 2026-07-05 tools are also model-exposable* (a `params` schema + `run_tools`):
   the search tool can be handed to the MODEL during analyze — it decides what to search —
   not only called by connector code. Every model tool call is logged as a `tool_call` span.
@@ -87,7 +95,9 @@ the closed loop producing a tangible, deployable artifact.
   keep the pack self-contained and the diffs readable.
 - **Design changes safely:** how to bound "change layout/design" so a held edit is reviewable
   (diff in the approval UI) rather than a wholesale rewrite.
-- **Content-change re-fetch:** detect when a configured page changed (hash) to re-ingest.
+- **Content-change re-fetch:** ~~TBD~~ resolved by `read_url`: hash the returned markdown,
+  snippet id = `url#hash` — a changed page gets a new id and re-ingests via the normal
+  watermark, no special mechanism.
 - **Goal/metric:** how the LLM measures "improvement" against a free-text config goal
   (LLM-as-judge score vs concrete checks like link/coverage counts).
 
@@ -142,7 +152,11 @@ including destructive ones, a seed site, and a config-driven goal. Phasing:
   failed commit makes destructive actions safely hold. Shipped early via the **KB pack**,
   which is now its first consumer (`edit_entry` allow-listed + git on) — so the website pack
   inherits this for free and starts at (1).
-- (1) `pages` connector + `create_page`/`edit_content` on static HTML.
+- (1) `pages` connector (via `read_url`) + `create_page`/`edit_content` on static HTML.
+  **Model-driven search is already in this phase for free:** hand `web_search` + `read_url`
+  into `run_tools` from day one — the model can research during analyze with zero
+  connector work.
 - (2) layout/design + `remove_page`.
-- (3) web `search` mode — now cheap: the core `web_search` built-in exists (2026-07-06);
-  this phase is just handing it into `run_tools` + a connector `search` mode.
+- (3) connector `search` mode — *scheduled* searches producing input snippets (fixed
+  queries from config). Possibly unnecessary: build it only if model-driven search from
+  (1) proves insufficient for discovering new content.

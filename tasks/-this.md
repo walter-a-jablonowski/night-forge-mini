@@ -48,8 +48,12 @@ Next
 - [text](backlog/website-domain-pack.md) — captured: `web-source` connector (search|pages), config-sourced goal, actions create_page (reversible, auto-runnable) / edit_content / change_layout / remove_page (all reversible=false → held); site under `data/site/` versioned via the new git integration. Effort L (phased).
 
   - [ ] old: Self improving homepage
-    - Simple web design => expands to better
-    - Layout, site elements and content improves
+    - Starts with a simle dummy page => expands to better
+    - The user defines the goal(s) for the impeovements
+    - Does web searches, fills content, adds images
+    - Also improves site layout, adds componentes
+    - Also improves the styles
+    - Improves SEO
     - Must have content improves
     - Constraints: e.g. logos, colors, ... for CI
 
