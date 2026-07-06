@@ -14,11 +14,13 @@ from .registry import Tool
 _USER_AGENT = "night_forge_mini/1.0 (+tools.fetch_url)"
 
 
-def fetch_url(url: str, *, timeout: float = 10.0, max_bytes: int = 2_000_000) -> str:
+def fetch_url(url: str, *, timeout: float = 10.0, max_bytes: int = 2_000_000,
+              headers: dict | None = None) -> str:
+    # `headers` is for internal reuse (e.g. read_url's optional auth), not in the schema.
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise ValueError(f"fetch_url: refusing non-http(s) URL: {url!r}")
-    req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
+    req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT, **(headers or {})})
     with urllib.request.urlopen(req, timeout=timeout) as resp:  # nosec B310 - scheme checked above
         raw = resp.read(max_bytes + 1)[:max_bytes]
         charset = resp.headers.get_content_charset() or "utf-8"

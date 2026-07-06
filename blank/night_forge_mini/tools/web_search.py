@@ -73,7 +73,7 @@ def web_search(query: str, max_results: int = 5, *, timeout: float = 15.0) -> st
 
 TOOL = Tool(name="web_search",
             description="Search the web; returns titles, URLs and content snippets. "
-                        "Use fetch_url to read a promising result in full.",
+                        "Use read_url to read a promising result in full.",
             run=web_search,
             available_check=lambda: _pick_provider() is not None,
             params={"type": "object",

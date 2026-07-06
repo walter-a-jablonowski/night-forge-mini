@@ -45,12 +45,6 @@ in reality (token usage): smarter retrieval (feed the most relevant context, the
 Next
 ----------------------------------------------------------
 
-- [x] tool-registry
-  - [x] fetch_url tool isn't enough for website domain, we need search and fetch
-    - Tavily Exa
-
-I also like using Jina Reader. I currently use the free version and just prepend r.jina.ai/ in front of an URL. Paid version (if present) would be optional.
-
 - [text](backlog/website-domain-pack.md) — captured: `web-source` connector (search|pages), config-sourced goal, actions create_page (reversible, auto-runnable) / edit_content / change_layout / remove_page (all reversible=false → held); site under `data/site/` versioned via the new git integration. Effort L (phased).
 
   - [ ] old: Self improving homepage
@@ -120,6 +114,12 @@ Done
 ----------------------------------------------------------
 
 ### 2026-07-06
+
+- [x] tool-registry
+  - [x] fetch_url tool isn't enough for website domain, we need search and fetch
+    - Tavily Exa
+
+- [x] I also like using Jina Reader. I currently use the free version and just prepend r.jina.ai/ in front of an URL. Paid version (if present) would be optional.
 
 - [x] We make a review for this system. It is an extensible system where an AI constantly improves an artifact.
 

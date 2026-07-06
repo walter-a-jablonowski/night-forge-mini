@@ -47,6 +47,9 @@ The core ships a small tool registry (`night_forge_mini/tools/`) so packs don't 
 common infra. Built-ins are stdlib-only (zero extra dependency):
 - `fetch_url(url)` — HTTP(S) GET → text (refuses non-http(s); size-capped).
 - `html_to_text(html)` — strip HTML to readable plain text.
+- `read_url(url)` — page → clean **markdown** via Jina Reader (`r.jina.ai`; handles
+  JS-rendered pages). Free tier needs no key — always available; optional `JINA_API_KEY`
+  unlocks paid rate limits. Prefer this for page content; `fetch_url` for raw sources.
 - `web_search(query, max_results)` — ONE search tool, two providers behind it: **Tavily**
   (default when `TAVILY_API_KEY` is set; results include content snippets) or **Exa**
   (`EXA_API_KEY`; neural search). Force one via `WEB_SEARCH_PROVIDER=tavily|exa`. Keyed:

@@ -14,4 +14,4 @@ SCHEMA_V = 1
 
 # Core version — bump on every core change, so a copy-deployed installation can tell
 # which core it runs and whether a re-copy is due (see tasks/review/core-as-package.md).
-__version__ = "0.2.2"
+__version__ = "0.2.3"

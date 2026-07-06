@@ -44,8 +44,9 @@ the closed loop producing a tangible, deployable artifact.
   prompt like the KB pack does. Use the **agentic loop** (`model.run_tools`, budget via an
   `analyze_tool_steps` config key like the KB's): give the model the site **map** (bounded
   page list) plus READ-ONLY tools — a pack `read_page(path)` (full source of one page, the
-  `read_entry` analogue) and the core `fetch_url`/`html_to_text` (both now model-exposable,
-  they carry `params` schemas) — so it reads pages/sources on demand instead of stuffing a
+  `read_entry` analogue) and the core `read_url` (Jina Reader, clean markdown — the default
+  for external pages), `web_search`, `fetch_url`/`html_to_text` (raw sources; all
+  model-exposable, they carry `params` schemas) — so it reads pages/sources on demand instead of stuffing a
   "bounded slice of pages" into context. Proposal via `proposal_schema(<action enum>)`;
   the CORE sanitizes the returned actions — no pack-side `_normalize`. Measures a pack-owned
   metric (e.g. `pages`, `goal_coverage` (LLM-judged), `broken_links`) and prompts for
