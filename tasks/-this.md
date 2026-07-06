@@ -70,12 +70,16 @@ Next
     - [ ] limit effort good idea?
 
   - [x] `metric-as-objective.md` | M      | anytime; also the substrate for drift-detection / roi-measurement                                   |
-  - [ ] `sqlite-store.md`        | M      | triggered: when scheduler-daemon or approval-ui adds a second writer                                |
-  - [ ] `core-as-package.md`     | S      | triggered: when a second real installation exists (the `__version__` first step is worth doing now) |
+  - [>] `sqlite-store.md`        | M      | triggered: when scheduler-daemon or approval-ui adds a second writer                                |
+  - [>] `core-as-package.md`     | S      | triggered: when a second real installation exists (the `__version__` first step is worth doing now) |
 
 - Minor
+
   - LLM wrapper has no retry/timeout
-  - REPL dies on any command exception, no tests — though with --fake-llm the deterministic test harness is essentially already built and unused, so I'd call tests the cheapest of all these wins
+  - REPL dies on any command exception
+  - no tests — though with --fake-llm the deterministic test harness is essentially already built and unused
+
+- [ ] Check website domain pack and backlog tasks for adjustments needed because of the changes we made
 
 
 - [text](backlog/website-domain-pack.md) — captured: `web-source` connector (search|pages), config-sourced goal, actions create_page (reversible, auto-runnable) / edit_content / change_layout / remove_page (all reversible=false → held); site under `data/site/` versioned via the new git integration. Effort L (phased).
@@ -96,7 +100,14 @@ Next
 - [ ] Check backlog, what should we add? (see also above)
   
   by effort in parens
-  
+
+  - 0.2.0 — Fable 5 review
+  - 0.3.0 — website domain pack
+  - 0.4.0 — first second-writer feature (scheduler-daemon or approval-ui) together with sqlite-store, so the storage is designed around its first real consumer
+    [text](backlog/sqlite-store.md)
+  - 1.0.0 — core-as-package, because pip-installing the core is the moment the Pack seam becomes a frozen public API — the honest definition of 1.0 for this project  
+    [text](backlog/core-as-package.md)
+
   1. [x] bounded-retrieval — DONE (S): KB context now a bounded keyword slice (kb_context_max, default 20). M (embeddings) remains in backlog.
   2. [x] stale-edit-guard — DONE (S): edit_entry stamps a body fingerprint at propose; approval refuses (error outcome) if the body changed since. No lost-update.
   3. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped.

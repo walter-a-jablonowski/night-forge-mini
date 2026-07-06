@@ -3,6 +3,9 @@
 **From the 2026-07-05 core review. Trigger-based: do this when the SECOND real
 installation exists — with one deploy, copy-the-folder is fine.**
 
+**Target version: 1.0.0** — packaging freezes the `Pack` seam as a public API that
+installed deployments depend on; that is what a 1.0 should mean.
+
 **What:** Make the blank core a proper installable package (`pyproject.toml`), so a
 deployment is `domain_pack/ + config.json + data/` with `night-forge-mini` as a pinned
 dependency instead of a copied folder.
@@ -15,9 +18,9 @@ dependency instead of a copied folder.
   `night_forge_mini.*`, never the other way around.
 - Not yet: one moving deployment; packaging now is pure overhead.
 
-**First step worth doing NOW (cheap):** give the core a `__version__` next to `SCHEMA_V`
-and bump it on every core change, so a copied deployment can at least tell which core it
-runs and whether a re-copy is due.
+**First step DONE (2026-07-05):** the core has `__version__` (starting at 0.2.0) next to
+`SCHEMA_V`, shown via `python -m night_forge_mini --version` — bump it on every core
+change, so a copied deployment can tell which core it runs and whether a re-copy is due.
 
 **Design sketch:**
 - `pyproject.toml` in blank/, `pip install -e .` for dev; publish to a private index or

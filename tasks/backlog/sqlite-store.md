@@ -3,6 +3,10 @@
 **From the 2026-07-05 core review. Trigger-based: do this when scheduler-daemon or
 approval-ui (or any second concurrent process) lands — not before.**
 
+**Target version: 0.4.0** — the same release as the first second-writer feature
+(scheduler-daemon or approval-ui), so the store design follows its first real consumer.
+(0.2.0 = core review fixes; 0.3.0 = website domain pack.)
+
 **What:** Move the append-only log from a single JSONL file to SQLite (one `records`
 table, same record shape, still append-only — no updates, no deletes).
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from . import __version__
 from .config import load
 from .env import load_dotenv
 from .loop import Engine
@@ -35,6 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv()  # load .env (cwd) before any provider key is read
     p = argparse.ArgumentParser(prog="night_forge_mini",
                                 description="Self-improving closed-loop system (blank core + one domain pack)")
+    p.add_argument("--version", action="version", version=f"night_forge_mini {__version__}")
     p.add_argument("--config", default="config.json")
     p.add_argument("--fake-llm", action="store_true", help="deterministic offline analysis (no API key / tokens)")
     sub = p.add_subparsers(dest="cmd", required=False)  # no command -> interactive REPL
