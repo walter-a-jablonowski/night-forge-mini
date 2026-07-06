@@ -46,16 +46,18 @@ Next
 ----------------------------------------------------------
 
 - [x] tool-registry
-  - [ ] fetch_url tool isn't enough for website domain, we need search and fetch
+  - [x] fetch_url tool isn't enough for website domain, we need search and fetch
     - Tavily Exa
 
-- [ ] old: Self improving homepage
-  - Simple web design => expands to better
-  - Layout, site elements and content improves
-  - Must have content improves
-  - Constraints: e.g. logos, colors, ... for CI
+I also like using Jina Reader. I currently use the free version and just prepend r.jina.ai/ in front of an URL. Paid version (if present) would be optional.
 
 - [text](backlog/website-domain-pack.md) — captured: `web-source` connector (search|pages), config-sourced goal, actions create_page (reversible, auto-runnable) / edit_content / change_layout / remove_page (all reversible=false → held); site under `data/site/` versioned via the new git integration. Effort L (phased).
+
+  - [ ] old: Self improving homepage
+    - Simple web design => expands to better
+    - Layout, site elements and content improves
+    - Must have content improves
+    - Constraints: e.g. logos, colors, ... for CI
 
   - See questions in task
   - Woud you change something?

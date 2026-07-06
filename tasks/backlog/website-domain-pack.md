@@ -75,9 +75,10 @@ the closed loop producing a tangible, deployable artifact.
 ## Open questions
 - **Web fetching deps — resolved → its own task `tool-registry.md` (DONE).** The core has a
   tool registry + `night_forge_mini/tools/` with stdlib built-ins (`fetch_url`,
-  `html_to_text`), landed **before** this pack. So **`pages` mode uses the core fetcher**;
-  **`search` mode is a pack-registered tool** (e.g. Exa — needs a key in config + `.env`,
-  like the LLM providers). See `tool-registry.md` for the full design and boundaries.
+  `html_to_text`, and since 2026-07-06 **`web_search`** — Tavily/Exa behind one core tool,
+  keys via `.env`), landed **before** this pack. So **`pages` mode uses the core fetcher**
+  and **`search` mode uses the core `web_search`** — the pack registers no search tool of
+  its own. See `tool-registry.md` for the full design and boundaries.
   *Since 2026-07-05 tools are also model-exposable* (a `params` schema + `run_tools`):
   the search tool can be handed to the MODEL during analyze — it decides what to search —
   not only called by connector code. Every model tool call is logged as a `tool_call` span.
@@ -121,8 +122,8 @@ git supplies the rollback mechanism that backlog item names as the precondition 
 classifier required, because every change is recoverable.
 
 ## Depends on / pairs with
-- **tool-registry** (DONE) — supplies the core `fetch_url` / `html_to_text` tools this pack's
-  `pages` mode uses; `search` mode registers a pack tool (e.g. Exa) on top.
+- **tool-registry** (DONE) — supplies the core `fetch_url` / `html_to_text` / `web_search`
+  tools; both `pages` and `search` mode are batteries-included, no pack tool needed.
 - **autonomous-actions** — git-backed autonomy (above) is its first concrete instance; git is
   the rollback substrate that item requires.
 - **git integration** (DONE) — versioning + push of `data/site/`.
@@ -142,4 +143,5 @@ including destructive ones, a seed site, and a config-driven goal. Phasing:
   inherits this for free and starts at (1).
 - (1) `pages` connector + `create_page`/`edit_content` on static HTML.
 - (2) layout/design + `remove_page`.
-- (3) web `search` mode.
+- (3) web `search` mode — now cheap: the core `web_search` built-in exists (2026-07-06);
+  this phase is just handing it into `run_tools` + a connector `search` mode.

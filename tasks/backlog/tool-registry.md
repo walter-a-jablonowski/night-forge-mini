@@ -57,18 +57,23 @@ gracefully when they're missing (same spirit as `Git.available()`).
   unavailable tool is reported, never a hard crash — the pack falls back or the action holds.
 
 ## Boundaries (what is core vs pack)
-- **Core tool** = domain-agnostic **and** zero / near-zero dependency (the two stdlib tools above).
-- **Pack tool** = anything domain-specific, keyed, or heavy: web **search** (e.g. an Exa /
-  search-API client — needs a key in `.env` + config), headless/JS rendering, site-shape
-  logic. The pack registers these at `build_pack` time; they don't ship in core.
+- **Core tool** = domain-agnostic **and** zero / near-zero dependency (stdlib). *Revised
+  2026-07-06:* **keyed is fine in core** when both hold — the `requires`/`available_check`
+  mechanism disables a keyless tool gracefully, so "keyed" alone doesn't push a tool into
+  the pack. First instance: the `web_search` built-in (Tavily/Exa behind one tool, stdlib
+  REST, keys via `.env`).
+- **Pack tool** = anything domain-specific or heavy: headless/JS rendering, site-shape
+  logic, SDK-dependent clients. The pack registers these at `build_pack` time; they don't
+  ship in core.
 - Tools sit **below** the `Connector` seam — helpers a `fetch()` / action calls, **not** a
   replacement for the seam. The connector contract is unchanged.
 
 ## How the website pack will use it (the consumer)
 - **`pages` mode** → core `fetch_url` + `html_to_text`. Batteries included, no new dep.
-- **`search` mode** → a **pack-registered** `web_search` tool (e.g. Exa) using a config + `.env`
-  key, exactly like the LLM providers. Optional; absent key ⇒ `available()` false ⇒ search
-  mode disabled, `pages` mode still works.
+- **`search` mode** → the core **`web_search` built-in** (shipped 2026-07-06: Tavily/Exa
+  behind one tool, stdlib REST, `TAVILY_API_KEY`/`EXA_API_KEY` in `.env`, exactly like the
+  LLM providers). Optional; absent key ⇒ `available()` false ⇒ search mode disabled,
+  `pages` mode still works. The pack registers nothing for search.
 
 ## Scope / non-goals
 - **In:** registry, `Tool` shape, the two stdlib built-ins, availability/degradation, docs.
