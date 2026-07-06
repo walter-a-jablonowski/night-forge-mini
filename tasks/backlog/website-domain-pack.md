@@ -1,5 +1,10 @@
 # Domain pack: website (self-improving homepage)
 
+**Target version: 0.3.0.** Build directly against the post-review core contract (0.2.x):
+`analyze(model, *, goal, snippets, history)`, core-side action sanitization, native
+structured output (`proposal_schema`), agentic analyze (`run_tools`), `expected_impact`.
+The kb pack shows every pattern; see "2026-07-05 contract updates" notes inline below.
+
 **What:** A second domain pack (a `domains/website/` deploy, sibling to `domains/kb/`) whose
 materialized artifact is a **website**. It starts as a minimal dummy site, then on each loop
 pass consumes content **from the internet** — either via web search or a configured list of
@@ -33,9 +38,18 @@ the closed loop producing a tangible, deployable artifact.
 - **Goal from config** — `build_pack(cfg)` reads `cfg.get("site_goal")` / improvement
   instructions and passes them as the pack's `goal`. (Today `Pack.goal` is a constant; this
   pack makes it config-sourced — no core change, just how the pack builds itself.)
-- **analyze** — feeds the LLM: current site (bounded slice of pages/structure), the freshly
-  fetched web content, and the config goal -> `{finding, metric, actions}`. Measures a
-  pack-owned metric (e.g. `pages`, `goal_coverage` (LLM-judged), `broken_links`).
+- **analyze** *(updated 2026-07-05 to the new contract)* — signature
+  `(model, *, goal, snippets, history)`; `history` brings findings, metric trend, human
+  rejections, failed actions and predicted-vs-actual impact for free — render them into the
+  prompt like the KB pack does. Use the **agentic loop** (`model.run_tools`, budget via an
+  `analyze_tool_steps` config key like the KB's): give the model the site **map** (bounded
+  page list) plus READ-ONLY tools — a pack `read_page(path)` (full source of one page, the
+  `read_entry` analogue) and the core `fetch_url`/`html_to_text` (both now model-exposable,
+  they carry `params` schemas) — so it reads pages/sources on demand instead of stuffing a
+  "bounded slice of pages" into context. Proposal via `proposal_schema(<action enum>)`;
+  the CORE sanitizes the returned actions — no pack-side `_normalize`. Measures a pack-owned
+  metric (e.g. `pages`, `goal_coverage` (LLM-judged), `broken_links`) and prompts for
+  `expected_impact` on those keys, so `history["impact"]` calibrates the pack from run 3 on.
 - **actions** with honest `risk_level` / `reversible`. Default gate behavior below assumes
   this pack's **autonomous default** (git-backed; see "Default mode"). The actions stay
   honestly `reversible: false`; git-recoverable is what lets them auto-run:
@@ -64,6 +78,9 @@ the closed loop producing a tangible, deployable artifact.
   `html_to_text`), landed **before** this pack. So **`pages` mode uses the core fetcher**;
   **`search` mode is a pack-registered tool** (e.g. Exa — needs a key in config + `.env`,
   like the LLM providers). See `tool-registry.md` for the full design and boundaries.
+  *Since 2026-07-05 tools are also model-exposable* (a `params` schema + `run_tools`):
+  the search tool can be handed to the MODEL during analyze — it decides what to search —
+  not only called by connector code. Every model tool call is logged as a `tool_call` span.
 - **Site shape:** static HTML/templates vs a generator (e.g. Eleventy/Hugo)? Start static to
   keep the pack self-contained and the diffs readable.
 - **Design changes safely:** how to bound "change layout/design" so a held edit is reviewable
@@ -109,7 +126,9 @@ classifier required, because every change is recoverable.
 - **autonomous-actions** — git-backed autonomy (above) is its first concrete instance; git is
   the rollback substrate that item requires.
 - **git integration** (DONE) — versioning + push of `data/site/`.
-- **bounded-retrieval** (DONE) — bound the site context fed to the model, like the KB.
+- **bounded-retrieval** (DONE) — only the site **map** needs bounding now; since
+  agentic-analyze (2026-07-05) the model reads full pages on demand via `read_page`
+  instead of receiving a pre-sliced context.
 - **approval-ui** / **stale-edit-guard** — diffs + lost-update protection matter more here
   (overwrite + delete are the common case, not the exception).
 

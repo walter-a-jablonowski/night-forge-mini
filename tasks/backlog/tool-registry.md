@@ -5,7 +5,10 @@
 zero new dep), wired explicitly in `tools/__init__.py`. Verified: registration/lookup,
 duplicate-name guard, `fetch_url` rejects non-http(s), `html_to_text` drops script/style +
 decodes entities, `available()` honesty via `requires`, fresh-`Registry` isolation. Docs in
-`blank/README.md`. Remaining (deferred, see non-goals): LLM function-calling exposure.
+`blank/README.md`. **Update 2026-07-05: LLM function-calling exposure is DONE too** —
+`Tool` gained an optional `params` JSON schema, and `ModelWrapper.run_tools` exposes
+read-only tools to the model (agentic analyze); calls are logged as `tool_call` spans.
+Nothing remains open in this task.
 
 **What:** Give the blank core a small **tool registry** plus a `night_forge_mini/tools/`
 package of basic, reusable tools. A *tool* is a domain-agnostic capability a pack's
@@ -69,9 +72,10 @@ gracefully when they're missing (same spirit as `Git.available()`).
 
 ## Scope / non-goals
 - **In:** registry, `Tool` shape, the two stdlib built-ins, availability/degradation, docs.
-- **Out (defer):** exposing tools to the **LLM as function-calling** (the idea_2 "agent with
-  tools" vision) — v1 tools are internal helpers for pack code only. Also out: a plugin/auto-
-  discovery mechanism — explicit registration is enough for one-pack-per-deploy.
+- ~~**Out (defer):** exposing tools to the **LLM as function-calling**~~ — **shipped
+  2026-07-05** via `run_tools` + `Tool.params` (see agentic-analyze in `tasks/v done/`).
+  Still out: a plugin/auto-discovery mechanism — explicit registration is enough for
+  one-pack-per-deploy.
 
 ## Decisions (resolved)
 - **Creds (user):** tool secrets live in **`.env`**, provided by the operator at deploy (the

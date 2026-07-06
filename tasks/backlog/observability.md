@@ -19,7 +19,9 @@ in v1 also overlaps with deferred **cost logging** + **dashboards** and breaks v
 
 **v1 seam (already in v1):** every model call goes through **one thin client wrapper**,
 and the artifact store is **already a hierarchical trace** — `run_id` (=trace_id),
-`parent_id` (=parent span), and spans carry `start_ts`/`end_ts`. This is the same
+`parent_id` (=parent span), and spans carry `start_ts`/`end_ts`. Since 2026-07-05 the
+agentic analyze even logs each model tool call as a timed `tool_call` span under the
+analysis record — exactly the nested-span level these tracers expect. This is the same
 trace→nested-span model Langfuse/LangSmith and OpenTelemetry use, so adding
 observability later is config, not a rewrite:
 - Langfuse/LangSmith → add a callback/decorator inside the wrapper; the store's
