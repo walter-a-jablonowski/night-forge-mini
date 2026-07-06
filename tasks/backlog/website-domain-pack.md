@@ -10,13 +10,22 @@ materialized artifact is a **website**. It starts as a minimal dummy site, then 
 pass consumes content **from the internet** — either via web search or a configured list of
 pages — and uses the LLM to **improve the site** toward a goal. It may:
 - **Edit content** of existing pages,
-- **Change layout / design** (templates, CSS, structure),
-- **Create or remove sub-pages**.
+- **Change layout / design** (templates, CSS, structure, shared components/fragments),
+- **Create or remove sub-pages**,
+- **Add images / assets** (see "Images & assets" below — licensing decides the source),
+- **Improve SEO** — titles, meta descriptions, sitemap.xml/robots.txt, structured data.
+  No new machinery: these are ordinary `edit_content`/`create_page` writes; make SEO an
+  explicit improvement dimension in the prompt and a metric key (see metric below).
 
 The **goal and the "how to improve" instructions are supplied by the user in `config.json`**
 (not hard-coded in the pack, unlike the KB pack whose goal is a constant). Config also carries
 **brand / CI constraints** the LLM must respect (e.g. logos, color palette, fixed elements) —
 "must-have" content and design invariants that improvements may not violate.
+Enforcement is two-layered: (soft) the constraints block is rendered into the system
+prompt on EVERY run; (hard, optional) actions can refuse violating writes — e.g.
+`change_design` rejects CSS containing forbidden colors, `edit_content` refuses to drop
+a required logo/element — the same refuse-inside-the-action pattern as the KB's
+create-only `add_entry`.
 
 **Why:** It exercises the core on a genuinely **destructive, file-shaped** domain (overwrite
 + delete), which is exactly why git versioning was just added. It's also a compelling demo of
@@ -56,7 +65,8 @@ the closed loop producing a tangible, deployable artifact.
   model-exposable, they carry `params` schemas) — so it reads pages/sources on demand instead of stuffing a
   "bounded slice of pages" into context. Proposal via `proposal_schema(<action enum>)`;
   the CORE sanitizes the returned actions — no pack-side `_normalize`. Measures a pack-owned
-  metric (e.g. `pages`, `goal_coverage` (LLM-judged), `broken_links`) and prompts for
+  metric (e.g. `pages`, `goal_coverage` (LLM-judged), `broken_links`, `seo_basics` = pages
+  with title + meta description — a concrete, cheaply measured SEO floor) and prompts for
   `expected_impact` on those keys, so `history["impact"]` calibrates the pack from run 3 on.
 - **actions** with honest `risk_level` / `reversible`. Default gate behavior below assumes
   this pack's **autonomous default** (git-backed; see "Default mode"). The actions stay
@@ -64,6 +74,7 @@ the closed loop producing a tangible, deployable artifact.
   | action | reversible | gate behavior (autonomous default) |
   |---|---|---|
   | `create_page` (create-only, refuses to overwrite) | true | auto-run (reversible) |
+  | `add_asset` (download image/file into `data/site/assets/`, create-only) | true | auto-run (reversible) |
   | `edit_content` (overwrites a page body) | **false** | auto-run via git-recoverable |
   | `change_layout` / `change_design` (templates/CSS) | **false** | auto-run via git-recoverable |
   | `remove_page` (deletes a file) | **false** | auto-run via git-recoverable |
@@ -79,6 +90,20 @@ the closed loop producing a tangible, deployable artifact.
 ## Seed
 - A minimal dummy site under `data/site/` (one or two pages + a basic template/CSS) so the
   first run has something to improve.
+
+## Images & assets (added 2026-07-06)
+`add_asset(target=assets/<name>, payload={url})` downloads an image/file into the site.
+Create-only (refuses overwrite) → honestly `reversible: true`, auto-runnable like
+`create_page`. Needs a **binary-safe download**: core `fetch_url` decodes text, so this is
+either a `fetch_binary` variant (core tool, same scheme/size rules) or a pack-local helper.
+**Licensing decides the source** — a generic web image is NOT safe to copy. Preference order:
+1. **operator-provided** assets/URLs from config (logo, brand imagery) — always safe,
+2. **openly-licensed search** — Openverse / Wikimedia Commons APIs are keyless and return
+   license metadata; record attribution in the asset's sidecar or a credits page,
+3. **hotlinking** external images — last resort (flaky, someone else's bandwidth), behind a
+   config switch, default off.
+Image **generation** (keyed image-model API as another core tool) is a possible later add —
+it sidesteps licensing entirely but costs money per image.
 
 ## Open questions
 - **Web fetching deps — resolved → its own task `tool-registry.md` (DONE).** The core has a
@@ -155,8 +180,10 @@ including destructive ones, a seed site, and a config-driven goal. Phasing:
 - (1) `pages` connector (via `read_url`) + `create_page`/`edit_content` on static HTML.
   **Model-driven search is already in this phase for free:** hand `web_search` + `read_url`
   into `run_tools` from day one — the model can research during analyze with zero
-  connector work.
-- (2) layout/design + `remove_page`.
+  connector work. SEO basics ride along too (titles/meta = ordinary content edits;
+  `seo_basics` metric key).
+- (2) layout/design + `remove_page` + `add_asset` (images; binary download + the
+  licensing-source ladder above).
 - (3) connector `search` mode — *scheduled* searches producing input snippets (fixed
   queries from config). Possibly unnecessary: build it only if model-driven search from
   (1) proves insufficient for discovering new content.

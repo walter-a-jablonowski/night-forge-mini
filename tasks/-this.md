@@ -47,18 +47,7 @@ Next
 
 - [text](backlog/website-domain-pack.md) — captured: `web-source` connector (search|pages), config-sourced goal, actions create_page (reversible, auto-runnable) / edit_content / change_layout / remove_page (all reversible=false → held); site under `data/site/` versioned via the new git integration. Effort L (phased).
 
-  - [ ] old: Self improving homepage
-    - Starts with a simle dummy page => expands to better
-    - The user defines the goal(s) for the impeovements
-    - Does web searches, fills content, adds images
-    - Also improves site layout, adds componentes
-    - Also improves the styles
-    - Improves SEO
-    - Must have content improves
-    - Constraints: e.g. logos, colors, ... for CI
-
   - See questions in task
-  - Woud you change something?
   - Check for errors
 
   - First page: simple healthy nutrition
@@ -118,6 +107,18 @@ Done
 ----------------------------------------------------------
 
 ### 2026-07-06
+
+- [x] Below is roughly what the website domain pack does. Verify it can do this.
+
+  This list isn't neccessarily complete and can be improved or changed:
+
+  - Starts with a simle dummy page => expands to better
+  - The user defines the goal(s) for the improvements e.g. in a prompt (via config switch where that makes sense)
+  - Does web searches, fills content, adds images
+  - Also improves site layout, adds componentes
+  - Also improves the styles
+  - Improves SEO
+  - User may also define constraints: e.g. use avoid certain colors, or use a specific logo
 
 - [x] tool-registry
   - [x] fetch_url tool isn't enough for website domain, we need search and fetch
