@@ -74,33 +74,34 @@ Next
 
 ### Backlog
   
-- 0.2.0 — Fable 5 review
+- 0.2.0/0.2.1 — Fable 5 review — DONE (0.2.1 = REPL robustness + LLM timeout/retries)
 - 0.3.0 — website domain pack
 - 0.4.0 — first second-writer feature (scheduler-daemon or approval-ui) together with sqlite-store, so the storage is designed around its first real consumer
   [text](backlog/sqlite-store.md)
 - 1.0.0 — core-as-package, because pip-installing the core is the moment the Pack seam becomes a frozen public API — the honest definition of 1.0 for this project  
   [text](backlog/core-as-package.md)
 
-by effort in parens
+by priority, effort in parens (reordered 2026-07-06 after the review changes)
 
-1. [x] DONE - bounded-retrieval — DONE (S): KB context now a bounded keyword slice (kb_context_max, default 20). M (embeddings) remains in backlog.
-2. [x] DONE - stale-edit-guard — DONE (S): edit_entry stamps a body fingerprint at propose; approval refuses (error outcome) if the body changed since. No lost-update.
-3. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped.
-4. cost logging (S, roi-measurement) — per-run token/$ visibility; full ROI attribution comes later (L).
-5. approval-ui (S read-only) — web inbox over the log; lowers the cost of keeping a human at the gate.
-6. run-triggers/ (S→M) — alternative invocation methods (most important first). Unattended ones need a pending-notification (pairs with approval-ui):
-    - [x] DONE - interactive-cli (S) — DONE: REPL console (`python -m night_forge_mini` / `shell`); approve by inbox #.
+1. website-domain-pack (L, = 0.3.0) — the next milestone. Spec updated to the new core contract (history, run_tools, proposal_schema, expected_impact); includes the search tool (Tavily/Exa) exposed to the model. [text](backlog/website-domain-pack.md)
+2. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped. MORE urgent since agentic analyze: several model calls per run, and tool_call spans map 1:1 to tracer spans.
+3. cost logging (S, roi-measurement) — per-run token/$ visibility; same reason as observability (run_tools multiplies calls). impact_report now supplies the value side for the later ROI join (L).
+4. data-governance (S first step) — scoped read-only creds per connector. Trigger fires WITH 0.3.0: web-source is the 2nd connector (+ search API key).
+5. approval-ui (S read-only) — web inbox over the log; lowers the cost of keeping a human at the gate. Matters more for the website pack (diffs for overwrite/delete).
+6. run-triggers/ (S→M) — alternative invocation methods (most important first). Unattended ones need a pending-notification (pairs with approval-ui). First one that lands pulls sqlite-store into the same release (0.4.0):
     - scheduler-daemon (S) — interval poll loop; the realistic "endless loop" for unattended operation.
     - filesystem-watch (S) — fire a run when a new artifact lands (event-driven; fits the KB folder).
     - http-api-server (M) — HTTP endpoints over the engine; substrate for web UI, remote, webhooks.
     - webhook-trigger (M) — external event POSTs in to fire a run (builds on http-api-server).
     - library-embed (XS) — call the engine in-process; already works, just document/harden.
-7. data-governance (S first step) — scoped read-only creds per connector; do when a 2nd connector lands.
-8. autonomous-actions (M) — earned autonomy (risk classifier + rollback) once hand-curating the allow-list hurts.
-9. drift-detection (L) — needs accumulated metric history first.
+7. agentic-analyze remainder (M) — token budget for the tool loop + quality eval across runs (core+kb part DONE 2026-07-05, see tasks/v done; website adoption happens in 0.3.0).
+8. autonomous-actions (M) — earned autonomy (risk classifier + rollback) once hand-curating the allow-list hurts. 0.3.0 ships its first concrete instance (git-backed autonomy); the general version stays deferred.
+9. drift-detection (L) — substrate now exists (impact_report = predicted-vs-actual per run); still needs accumulated history before the statistics mean anything.
 10. multi-channel-capture (L) — many integrations + consent.
 11. dashboards (L) — only pays off with multiple domains.
 12. software-factory (XL) — separate, huge specialization.
+
+done: bounded-retrieval (S; embeddings-M now likely unnecessary — agentic reads supersede it) · stale-edit-guard (S) · interactive-cli (S) · tool-registry (S, incl. model function-calling)
 
 - maybe git-library instead of CLI
 
