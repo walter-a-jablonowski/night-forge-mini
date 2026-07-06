@@ -47,7 +47,76 @@ Next
 
 - [x] tool-registry
   - [ ] fetch_url tool isn't enough for website domain, we need search and fetch
-    - Tavily Exa 
+    - Tavily Exa
+
+- [ ] old: Self improving homepage
+  - Simple web design => expands to better
+  - Layout, site elements and content improves
+  - Must have content improves
+  - Constraints: e.g. logos, colors, ... for CI
+
+- [text](backlog/website-domain-pack.md) — captured: `web-source` connector (search|pages), config-sourced goal, actions create_page (reversible, auto-runnable) / edit_content / change_layout / remove_page (all reversible=false → held); site under `data/site/` versioned via the new git integration. Effort L (phased).
+
+  - See questions in task
+  - Woud you change something?
+  - Check for errors
+
+  - First page: simple healthy nutrition
+    - Ingredients
+    - Simple meals
+      - fast to make (sample: put in a boal, heat up, ready)
+      - good combinations of ingredients (nutrients) per meal
+      - cheap (only if possible, price is lower priority)
+
+- [x] Make nice CLI [text](backlog/run-triggers/interactive-cli.md) — DONE (S): interactive REPL (`python -m night_forge_mini` / `shell`); run/inbox/approve/reject/trace, approve by inbox #. M (edit-before-approve + streaming) remains.
+  - [ ] try
+
+
+### Backlog
+  
+- 0.2.0 — Fable 5 review
+- 0.3.0 — website domain pack
+- 0.4.0 — first second-writer feature (scheduler-daemon or approval-ui) together with sqlite-store, so the storage is designed around its first real consumer
+  [text](backlog/sqlite-store.md)
+- 1.0.0 — core-as-package, because pip-installing the core is the moment the Pack seam becomes a frozen public API — the honest definition of 1.0 for this project  
+  [text](backlog/core-as-package.md)
+
+by effort in parens
+
+1. [x] DONE - bounded-retrieval — DONE (S): KB context now a bounded keyword slice (kb_context_max, default 20). M (embeddings) remains in backlog.
+2. [x] DONE - stale-edit-guard — DONE (S): edit_entry stamps a body fingerprint at propose; approval refuses (error outcome) if the body changed since. No lost-update.
+3. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped.
+4. cost logging (S, roi-measurement) — per-run token/$ visibility; full ROI attribution comes later (L).
+5. approval-ui (S read-only) — web inbox over the log; lowers the cost of keeping a human at the gate.
+6. run-triggers/ (S→M) — alternative invocation methods (most important first). Unattended ones need a pending-notification (pairs with approval-ui):
+    - [x] DONE - interactive-cli (S) — DONE: REPL console (`python -m night_forge_mini` / `shell`); approve by inbox #.
+    - scheduler-daemon (S) — interval poll loop; the realistic "endless loop" for unattended operation.
+    - filesystem-watch (S) — fire a run when a new artifact lands (event-driven; fits the KB folder).
+    - http-api-server (M) — HTTP endpoints over the engine; substrate for web UI, remote, webhooks.
+    - webhook-trigger (M) — external event POSTs in to fire a run (builds on http-api-server).
+    - library-embed (XS) — call the engine in-process; already works, just document/harden.
+7. data-governance (S first step) — scoped read-only creds per connector; do when a 2nd connector lands.
+8. autonomous-actions (M) — earned autonomy (risk classifier + rollback) once hand-curating the allow-list hurts.
+9. drift-detection (L) — needs accumulated metric history first.
+10. multi-channel-capture (L) — many integrations + consent.
+11. dashboards (L) — only pays off with multiple domains.
+12. software-factory (XL) — separate, huge specialization.
+
+- maybe git-library instead of CLI
+
+
+Advanced
+----------------------------------------------------------
+
+- Wahlweise Aktionen als file only, check at end, then run later
+- Anything weak in /backlog? Needs improvement?
+- [ ] Add stuff like [text](backlog/domain-pack-template.md)
+
+
+Done
+----------------------------------------------------------
+
+### 2026-07-06
 
 - [x] We make a review for this system. It is an extensible system where an AI constantly improves an artifact.
 
@@ -79,73 +148,7 @@ Next
   - REPL dies on any command exception
   - no tests — though with --fake-llm the deterministic test harness is essentially already built and unused
 
-- [ ] Check the website domain pack and backlog tasks for adjustments needed because of the changes we made in the review
-
-
-- [text](backlog/website-domain-pack.md) — captured: `web-source` connector (search|pages), config-sourced goal, actions create_page (reversible, auto-runnable) / edit_content / change_layout / remove_page (all reversible=false → held); site under `data/site/` versioned via the new git integration. Effort L (phased).
-
-  - See questions in task
-  - Woud you change something?
-  - Check for errors
-
-  - First page: simple healthy nutrition
-    - Ingredients
-    - Simple meals
-      - fast to make (sample: put in a boal, heat up, ready)
-      - good combinations of ingredients (nutrients) per meal
-      - cheap (only if possible, price is lower priority)
-
-- [x] Make nice CLI [text](backlog/run-triggers/interactive-cli.md) — DONE (S): interactive REPL (`python -m night_forge_mini` / `shell`); run/inbox/approve/reject/trace, approve by inbox #. M (edit-before-approve + streaming) remains.
-
-- [ ] Check backlog, what should we add? (see also above)
-  
-  by effort in parens
-
-  - 0.2.0 — Fable 5 review
-  - 0.3.0 — website domain pack
-  - 0.4.0 — first second-writer feature (scheduler-daemon or approval-ui) together with sqlite-store, so the storage is designed around its first real consumer
-    [text](backlog/sqlite-store.md)
-  - 1.0.0 — core-as-package, because pip-installing the core is the moment the Pack seam becomes a frozen public API — the honest definition of 1.0 for this project  
-    [text](backlog/core-as-package.md)
-
-  1. [x] bounded-retrieval — DONE (S): KB context now a bounded keyword slice (kb_context_max, default 20). M (embeddings) remains in backlog.
-  2. [x] stale-edit-guard — DONE (S): edit_entry stamps a body fingerprint at propose; approval refuses (error outcome) if the body changed since. No lost-update.
-  3. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped.
-  4. cost logging (S, roi-measurement) — per-run token/$ visibility; full ROI attribution comes later (L).
-  5. approval-ui (S read-only) — web inbox over the log; lowers the cost of keeping a human at the gate.
-  6. run-triggers/ (S→M) — alternative invocation methods (most important first). Unattended ones need a pending-notification (pairs with approval-ui):
-     - [x] interactive-cli (S) — DONE: REPL console (`python -m night_forge_mini` / `shell`); approve by inbox #.
-     - scheduler-daemon (S) — interval poll loop; the realistic "endless loop" for unattended operation.
-     - filesystem-watch (S) — fire a run when a new artifact lands (event-driven; fits the KB folder).
-     - http-api-server (M) — HTTP endpoints over the engine; substrate for web UI, remote, webhooks.
-     - webhook-trigger (M) — external event POSTs in to fire a run (builds on http-api-server).
-     - library-embed (XS) — call the engine in-process; already works, just document/harden.
-  7. data-governance (S first step) — scoped read-only creds per connector; do when a 2nd connector lands.
-  8. autonomous-actions (M) — earned autonomy (risk classifier + rollback) once hand-curating the allow-list hurts.
-  9. drift-detection (L) — needs accumulated metric history first.
-  10. multi-channel-capture (L) — many integrations + consent.
-  11. dashboards (L) — only pays off with multiple domains.
-  12. software-factory (XL) — separate, huge specialization.
-
-  - maybe git-library instead of CLI
-
-- [ ] Self improving homepage
-  - Simple web design => expands to better
-  - Layout, site elements and content improves
-  - Must have content improves
-  - Constraints: e.g. logos, colors, ... for CI
-
-
-Advanced
-----------------------------------------------------------
-
-- Wahlweise Aktionen als file only, check at end, then run later
-- Anything weak in /backlog? Needs improvement?
-- [ ] Add stuff like [text](backlog/domain-pack-template.md)
-
-
-Done
-----------------------------------------------------------
+- [x] Check the website domain pack and backlog tasks for adjustments needed because of the changes we made in the review
 
 ### 2026-06-26
 
