@@ -106,6 +106,18 @@ Advanced
 Done
 ----------------------------------------------------------
 
+### 2026-07-11
+
+- [x] Open questions website-domain-pack.md:
+
+  - Site shape: No frameworks at all for now. Typically plain html/js/styles. Some sites might use PHP but custom development
+  - Design changes safely: This one is unclea, don't we have git to see the diff or set back changes?
+  - Content-change re-fetch: This is resolved no, right? see comment in file
+  - Goal/metric: LLM-as-judge makes sense, metric as well. Configurable in site config what should be used. A metric could also be a piece of code
+  that queries something or runs a tool e.g. some SEO relevant value of whatever. So, we merge the main app (blank) with the website domain pack,
+  then we could still extend this installation by providing custom metric implementation. The web domain pack could also include some ready to use
+  metric modules that generally make sense.
+
 ### 2026-07-06
 
 - [x] Below is roughly what the website domain pack does. Verify it can do this.

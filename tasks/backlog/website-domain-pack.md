@@ -64,8 +64,9 @@ the closed loop producing a tangible, deployable artifact.
   for external pages), `web_search`, `fetch_url`/`html_to_text` (raw sources; all
   model-exposable, they carry `params` schemas) — so it reads pages/sources on demand instead of stuffing a
   "bounded slice of pages" into context. Proposal via `proposal_schema(<action enum>)`;
-  the CORE sanitizes the returned actions — no pack-side `_normalize`. Measures a pack-owned
-  metric (e.g. `pages`, `goal_coverage` (LLM-judged), `broken_links`, `seo_basics` = pages
+  the CORE sanitizes the returned actions — no pack-side `_normalize`. Measures the metrics
+  the site config activates (pluggable metric modules — see the resolved Goal/metric question
+  below; shipped: `pages`, `goal_coverage` (LLM-judged), `broken_links`, `seo_basics` = pages
   with title + meta description — a concrete, cheaply measured SEO floor) and prompts for
   `expected_impact` on those keys, so `history["impact"]` calibrates the pack from run 3 on.
 - **actions** with honest `risk_level` / `reversible`. Default gate behavior below assumes
@@ -80,8 +81,8 @@ the closed loop producing a tangible, deployable artifact.
   | `remove_page` (deletes a file) | **false** | auto-run via git-recoverable |
 
   Unlike the KB pack (which holds everything destructive), here git makes overwrite/delete
-  recoverable, so they auto-run by default. Drop an action from the `allow_list` (or set
-  `supervised: true`) to hold it for human approval instead. If git isn't healthy
+  recoverable, so they auto-run by default. Drop an action from the `allow_list` to hold it
+  for human approval instead. If git isn't healthy
   (disabled / not `per_action` / dirty repo), the destructive actions **hold** rather than
   risk irreversible loss.
 - **Materialized artifact** = the site files under `data/site/`. The JSONL log stays the
@@ -90,12 +91,17 @@ the closed loop producing a tangible, deployable artifact.
 ## Seed
 - A minimal dummy site under `data/site/` (one or two pages + a basic template/CSS) so the
   first run has something to improve.
+- **Demo site concept (2026-07-11): simple healthy nutrition.** First page covers:
+  - ingredients,
+  - simple meals — fast to make (sample: put in a bowl, heat up, ready), good nutrient
+    combinations per meal, cheap where possible (price is lower priority).
 
 ## Images & assets (added 2026-07-06)
 `add_asset(target=assets/<name>, payload={url})` downloads an image/file into the site.
 Create-only (refuses overwrite) → honestly `reversible: true`, auto-runnable like
-`create_page`. Needs a **binary-safe download**: core `fetch_url` decodes text, so this is
-either a `fetch_binary` variant (core tool, same scheme/size rules) or a pack-local helper.
+`create_page`. Needs a **binary-safe download**: core `fetch_url` decodes text, so
+*(resolved 2026-07-11)* this is a **core tool `fetch_binary`** in blank's `tools/` (same
+scheme/size rules as `fetch_url`) — not a pack-local helper; any file-shaped pack will want it.
 **Licensing decides the source** — a generic web image is NOT safe to copy. Preference order:
 1. **operator-provided** assets/URLs from config (logo, brand imagery) — always safe,
 2. **openly-licensed search** — Openverse / Wikimedia Commons APIs are keyless and return
@@ -116,15 +122,27 @@ it sidesteps licensing entirely but costs money per image.
   *Since 2026-07-05 tools are also model-exposable* (a `params` schema + `run_tools`):
   the search tool can be handed to the MODEL during analyze — it decides what to search —
   not only called by connector code. Every model tool call is logged as a `tool_call` span.
-- **Site shape:** static HTML/templates vs a generator (e.g. Eleventy/Hugo)? Start static to
-  keep the pack self-contained and the diffs readable.
-- **Design changes safely:** how to bound "change layout/design" so a held edit is reviewable
-  (diff in the approval UI) rather than a wholesale rewrite.
+- **Site shape:** ~~TBD~~ **resolved 2026-07-11 — no frameworks, no generators.** Plain
+  HTML/JS/CSS; some sites may use PHP (custom development). The pack only reads/writes site
+  files as text and never executes the site, so `.php` pages work exactly like `.html` ones —
+  only the seed site and the default prompts assume plain HTML.
+- **Design changes safely:** ~~TBD~~ **resolved 2026-07-11 — git is the mechanism.** In the
+  autonomous default every action is its own commit (`per_action`), so each layout/design
+  change has a readable diff and is `git revert`-able — review happens post-hoc via git.
+  The one gap git can't cover — a diff of a *held* proposal BEFORE it is applied (payload vs
+  current file) — belongs to **approval-ui**, not this pack.
 - **Content-change re-fetch:** ~~TBD~~ resolved by `read_url`: hash the returned markdown,
   snippet id = `url#hash` — a changed page gets a new id and re-ingests via the normal
   watermark, no special mechanism.
-- **Goal/metric:** how the LLM measures "improvement" against a free-text config goal
-  (LLM-as-judge score vs concrete checks like link/coverage counts).
+- **Goal/metric:** ~~TBD~~ **resolved 2026-07-11 — pluggable metric modules, selected in the
+  site config.** Two kinds, freely combinable:
+  1. **LLM-as-judge** — scores the site against the free-text config goal (`goal_coverage`),
+  2. **code metrics** — a piece of code that computes/queries a value, and may call a tool
+     (e.g. an SEO check, `broken_links`, `seo_basics`, `pages`).
+  The pack ships a set of **ready-to-use metric modules** (the four named above); because an
+  installation = blank core merged with the pack on disk, an operator can drop in **custom
+  metric modules** next to them without touching core or pack. Config lists which metrics are
+  active; `expected_impact` is prompted on exactly those keys.
 
 ## Default mode: self-developing site (git-backed autonomy)
 **This pack is autonomous by default** — the LLM develops the site on its own, with git as
@@ -142,9 +160,11 @@ destructive actions (`edit_content`, `change_layout`, `remove_page`) in the `all
 Nothing auto-runs that isn't allow-listed (default-deny holds); git is what makes those
 destructive actions safe to allow-list.
 
-**Opting back into human approval** (when wanted):
-- per action — drop it from the `allow_list` (existing mechanism → that action holds), or
-- globally — a `supervised: true` switch that forces every action to hold regardless.
+**Opting back into human approval** (when wanted) — the allow-list already expresses both,
+no extra switch (a `supervised: true` flag was considered and dropped 2026-07-11 as
+redundant: default-deny + git undo + the JSONL audit log cover it):
+- per action — drop it from the `allow_list` (existing mechanism → that action holds),
+- globally — `allow_list: []` → every action holds.
 
 Requirements so git is a genuine undo (else fall back to holding, not silent data loss):
 - **`granularity: per_action`** so each change is independently `git revert`-able.
