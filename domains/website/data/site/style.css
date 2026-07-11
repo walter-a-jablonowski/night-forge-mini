@@ -1,0 +1,18 @@
+/* seed stylesheet — intentionally minimal; the loop develops it */
+
+:root { color-scheme: dark; }
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #141414;
+  color: #eee;
+}
+
+main {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+a { color: #e8a33d; }

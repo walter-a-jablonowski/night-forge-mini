@@ -239,11 +239,12 @@ including destructive ones, a seed site, and a config-driven goal. Phasing:
   failed commit makes destructive actions safely hold. Shipped early via the **KB pack**,
   which is now its first consumer (`edit_entry` allow-listed + git on) — so the website pack
   inherits this for free and starts at (1).
-- (1) `pages` connector (via `read_url`) + `create_page`/`edit_content` on static HTML.
-  **Model-driven search is already in this phase for free:** hand `web_search` + `read_url`
-  into `run_tools` from day one — the model can research during analyze with zero
-  connector work. SEO basics ride along too (titles/meta = ordinary content edits;
-  `seo_basics` metric key).
+- **(1) — DONE 2026-07-11** (`domains/website/`): `pages` connector (via `read_url`) +
+  `create_page`/`edit_content` on static HTML; `web_search` + `read_url` + `read_page`
+  handed into `run_tools`; the four metric modules (incl. `seo_basics`) per the interface
+  above; near-blank seed; config-sourced goal/constraints/metrics; stale-edit guard on
+  `edit_content`. 21 pack tests (`python -m pytest domains/website/tests`) + a merged-deploy
+  smoke run (fake LLM, live Jina fetch, per-action git commit) verified.
 - (2) layout/design + `remove_page` + `add_asset` (images; binary download + the
   licensing-source ladder above).
 - (3) connector `search` mode — *scheduled* searches producing input snippets (fixed
