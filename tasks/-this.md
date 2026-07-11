@@ -45,8 +45,6 @@ in reality (token usage): smarter retrieval (feed the most relevant context, the
 Next
 ----------------------------------------------------------
 
-- [ ] Does this app have any mechanism that will block progress for certain actions until a human appoves or do we rely on git / logs only ?
-
 - [text](backlog/website-domain-pack.md) — captured: `web-source` connector (search|pages), config-sourced goal, actions create_page (reversible, auto-runnable) / edit_content / change_layout / remove_page (all reversible=false → held); site under `data/site/` versioned via the new git integration. Effort L (phased).
 
   - See questions in task
@@ -58,6 +56,10 @@ Next
       - fast to make (sample: put in a boal, heat up, ready)
       - good combinations of ingredients (nutrients) per meal
       - cheap (only if possible, price is lower priority)
+
+- [ ] tool-registry.md done ?
+- [ ] Does this app have any mechanism that will block progress for certain actions until a human appoves or do we rely on git / logs only ?
+  - allow lists in code (see also diagram)
 
 - [x] Make nice CLI [text](backlog/run-triggers/interactive-cli.md) — DONE (S): interactive REPL (`python -m night_forge_mini` / `shell`); run/inbox/approve/reject/trace, approve by inbox #. M (edit-before-approve + streaming) remains.
   - [ ] try
