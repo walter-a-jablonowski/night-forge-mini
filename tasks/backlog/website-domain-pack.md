@@ -89,9 +89,11 @@ the closed loop producing a tangible, deployable artifact.
   source of truth; **git** versions `data/site/` and can push to a hosting remote.
 
 ## Seed
-- A minimal dummy site under `data/site/` (one or two pages + a basic template/CSS) so the
-  first run has something to improve.
-- **Demo site concept (2026-07-11): simple healthy nutrition.** First page covers:
+- *(decided 2026-07-11)* A **very basic, mostly blank start page** under `data/site/`
+  (one `index.html` + minimal CSS, near-empty content) so the first run has something to
+  improve. The app fills / develops it purely from the user's config goal — the seed carries
+  **no topic of its own**; topic content comes from `site_goal`, not from the pack.
+- **Test scenario (config, not seed): simple healthy nutrition.** `site_goal` for testing:
   - ingredients,
   - simple meals — fast to make (sample: put in a bowl, heat up, ready), good nutrient
     combinations per meal, cheap where possible (price is lower priority).
@@ -112,6 +114,43 @@ are not model-consumable → never exposed via `run_tools`; pack code calls it).
    config switch, default off.
 Image **generation** (keyed image-model API as another core tool) is a possible later add —
 it sidesteps licensing entirely but costs money per image.
+
+## Metric modules — interface (decided 2026-07-11)
+The pluggable-metrics decision (see Goal/metric below), made concrete. Design goals: fits the
+existing contract (metric = the flat `{key: number}` dict `analyze` returns; the core just
+records it), follows the tools-registry house style (explicit, no import-time magic), and
+makes operator drop-in trivial because an installation = blank + pack merged on disk.
+
+- **Location:** `domain_pack/metrics/<name>.py` — one module per metric.
+- **Module contract:** each module exposes two things:
+  ```python
+  KEYS = ["seo_basics"]                 # metric keys it produces (feeds the expected_impact prompt)
+
+  def measure(site, *, model, goal) -> dict[str, float]:
+      ...                               # e.g. {"seo_basics": 7}
+  ```
+  `site` is the pack's file API over `data/site/` (the `KnowledgeBase` analogue). `model` is
+  the LLM wrapper — only judge-style metrics use it; code metrics ignore it. A metric that
+  needs a tool (e.g. an SEO check fetching something) calls `registry.get(...)` like any
+  pack code — no extra plumbing.
+- **Activation via config:** `"metrics": ["pages", "goal_coverage", "broken_links", "seo_basics"]`.
+  Resolution: built-ins are wired explicitly in `metrics/__init__.py` (a name → module map,
+  like `tools/__init__.py`); an unknown name falls back to
+  `importlib.import_module(f"domain_pack.metrics.{name}")` — so a **custom metric = drop
+  `my_metric.py` into `metrics/` + add its name to config**, no code edits.
+- **analyze integration:** `metric = merge of measure() results across active modules`;
+  the `expected_impact` prompt lists the union of active modules' `KEYS`, so the model
+  predicts exactly what will be measured.
+- **Judge metrics & fake mode:** `goal_coverage` (LLM-as-judge, 0–10 against the free-text
+  `site_goal`) costs one model call per run — that's fine, but under `--fake-llm`
+  (`model.fake`) every judge metric must return a deterministic constant so the offline
+  loop stays reproducible.
+- **Failure isolation:** a module that raises is skipped — its keys are omitted from that
+  run's metric and the error is noted in the finding/log; a broken metric must never kill
+  the run.
+
+Shipped built-ins: `pages` (count), `broken_links` (internal links only), `seo_basics`
+(pages with title + meta description), `goal_coverage` (judge).
 
 ## Open questions
 - **Web fetching deps — resolved → its own task `tool-registry.md` (DONE).** The core has a
@@ -145,6 +184,7 @@ it sidesteps licensing entirely but costs money per image.
   installation = blank core merged with the pack on disk, an operator can drop in **custom
   metric modules** next to them without touching core or pack. Config lists which metrics are
   active; `expected_impact` is prompted on exactly those keys.
+  **Interface specified 2026-07-11 — see "Metric modules — interface" above.**
 
 ## Default mode: self-developing site (git-backed autonomy)
 **This pack is autonomous by default** — the LLM develops the site on its own, with git as
