@@ -100,8 +100,10 @@ the closed loop producing a tangible, deployable artifact.
 `add_asset(target=assets/<name>, payload={url})` downloads an image/file into the site.
 Create-only (refuses overwrite) → honestly `reversible: true`, auto-runnable like
 `create_page`. Needs a **binary-safe download**: core `fetch_url` decodes text, so
-*(resolved 2026-07-11)* this is a **core tool `fetch_binary`** in blank's `tools/` (same
-scheme/size rules as `fetch_url`) — not a pack-local helper; any file-shaped pack will want it.
+*(resolved + SHIPPED 2026-07-11)* this is the **core tool `fetch_binary`** in blank's
+`tools/` — same scheme refusal as `fetch_url`, but it *raises* on oversize instead of
+truncating (a truncated image is silent corruption) and has **no `params` schema** (bytes
+are not model-consumable → never exposed via `run_tools`; pack code calls it).
 **Licensing decides the source** — a generic web image is NOT safe to copy. Preference order:
 1. **operator-provided** assets/URLs from config (logo, brand imagery) — always safe,
 2. **openly-licensed search** — Openverse / Wikimedia Commons APIs are keyless and return

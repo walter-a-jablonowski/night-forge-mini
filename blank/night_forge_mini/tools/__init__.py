@@ -6,6 +6,7 @@ See tasks/backlog/tool-registry.md for the design.
 from __future__ import annotations
 
 from .registry import Registry, Tool, registry
+from . import fetch_binary as _fetch_binary
 from . import fetch_url as _fetch_url
 from . import html_to_text as _html_to_text
 from . import read_url as _read_url
@@ -13,6 +14,7 @@ from . import web_search as _web_search
 
 # explicit wiring (no import-time magic inside the tool modules) — the whole built-in set
 # is visible here in one place
+registry.register(_fetch_binary.TOOL)
 registry.register(_fetch_url.TOOL)
 registry.register(_html_to_text.TOOL)
 registry.register(_read_url.TOOL)
