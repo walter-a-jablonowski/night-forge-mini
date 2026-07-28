@@ -45,6 +45,20 @@ in reality (token usage): smarter retrieval (feed the most relevant context, the
 Next
 ----------------------------------------------------------
 
+- /blank: basic system
+- /domains: modular domain packs for use cases
+The blank system plus pne domain pack is merged in a new folder to get a running system.
+
+- [x] I guess this currently is a endless running system right? Does it already have any stop mechanism?
+
+- [ ] Verify
+
+  What is missing before a daemon would be safe
+
+  - which? No goal-reached termination. The metric is measured and logged, but never compared against a target — nothing says "score ≥ X, stop".
+  - which? No convergence detection. N consecutive runs with no metric improvement does not halt anything.
+  - kb doaian: search mode breaks quiescence. Website connector phase 3 (connector.py:12) makes input effectively infinite — the watermark stops protecting you, and then only the gate does.
+
 - [text](backlog/website-domain-pack.md) — captured: `web-source` connector (search|pages), config-sourced goal, actions create_page (reversible, auto-runnable) / edit_content / change_layout / remove_page (all reversible=false → held); site under `data/site/` versioned via the new git integration. Effort L (phased).
 
   - See questions in task
@@ -60,6 +74,7 @@ Next
 - [ ] tool-registry.md done ?
 - [ ] Does this app have any mechanism that will block progress for certain actions until a human appoves or do we rely on git / logs only ?
   - allow lists in code (see also diagram)
+  - see also backlog below
 
 - [x] Make nice CLI [text](backlog/run-triggers/interactive-cli.md) — DONE (S): interactive REPL (`python -m night_forge_mini` / `shell`); run/inbox/approve/reject/trace, approve by inbox #. M (edit-before-approve + streaming) remains.
   - [ ] try
@@ -82,7 +97,7 @@ by priority, effort in parens (reordered 2026-07-06 after the review changes)
 4. data-governance (S first step) — scoped read-only creds per connector. Trigger fires WITH 0.3.0: web-source is the 2nd connector (+ search API key).
 5. approval-ui (S read-only) — web inbox over the log; lowers the cost of keeping a human at the gate. Matters more for the website pack (diffs for overwrite/delete).
 6. run-triggers/ (S→M) — alternative invocation methods (most important first). Unattended ones need a pending-notification (pairs with approval-ui). First one that lands pulls sqlite-store into the same release (0.4.0):
-    - scheduler-daemon (S) — interval poll loop; the realistic "endless loop" for unattended operation.
+    - scheduler-daemon (S) — interval poll loop; the realistic "endless loop" for unattended action.
     - filesystem-watch (S) — fire a run when a new artifact lands (event-driven; fits the KB folder).
     - http-api-server (M) — HTTP endpoints over the engine; substrate for web UI, remote, webhooks.
     - webhook-trigger (M) — external event POSTs in to fire a run (builds on http-api-server).
