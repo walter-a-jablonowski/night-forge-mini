@@ -28,12 +28,25 @@
   "_site_goal_comment": "THE goal the site is developed toward — free text, rendered into every prompt. This example is the nutrition test scenario from the spec.",
   "site_goal": "Build a simple healthy nutrition site: ingredients, and simple meals that are fast to make (sample: put in a bowl, heat up, ready), with good nutrient combinations per meal, cheap where possible (price is lower priority).",
 
-  "_constraints_comment": "Brand/CI invariants the model must respect (string or list of lines); rendered into every prompt (soft enforcement in phase 1).",
+  "_constraints_comment": "Brand/CI invariants the model must respect (string or list of lines); rendered into every prompt — SOFT enforcement (taste, wording, anything unmechanical).",
   "constraints": [
     "Plain HTML/CSS/JS only — no frameworks, no build step.",
     "Keep style.css as the single shared stylesheet.",
     "Dark background with warm accent colors (orange/gold); green only where it means success."
   ],
+
+  "_hard_constraints_comment": "HARD enforcement — checked inside the write actions, a violating action fails with status=error (logged, and fed back to the model next run). forbidden_colors: substrings refused anywhere in a stylesheet. required_snippets: must survive an edit of a page that already contained them. Both are opt-in (empty = nothing to violate). allow_hotlinking is a FLOOR, active even without this block: false refuses <img src=\"http...\"> so images must be downloaded via add_asset; set true to opt out.",
+  "hard_constraints": {
+    "forbidden_colors": ["blue", "#0000ff"],
+    "required_snippets": [],
+    "allow_hotlinking": false
+  },
+
+  "_assets_comment": "add_asset licensing ladder. allowed_hosts: operator-approved hosts (incl. subdomains) whose files may be downloaded regardless of license — your own CDN, logo host. Anything else must carry an open license (by, by-sa, cc0, pdm) from the image_search tool. max_bytes caps one download.",
+  "assets": {
+    "allowed_hosts": [],
+    "max_bytes": 5000000
+  },
 
   "_connector_comment": "pages mode: fixed URL list, captured via read_url (Jina Reader) each run; snippet id = url#hash so a CHANGED page re-ingests and an unchanged one is skipped. A run is noop without new input, so list at least one source page. The model can additionally research on its own during analyze (web_search/read_url tools).",
   "connector": {
@@ -45,13 +58,14 @@
   "_metrics_comment": "Active metric modules (domain_pack/metrics/<name>.py). Custom: drop a module file in there and add its name here. goal_coverage is LLM-judged (one model call per run).",
   "metrics": ["pages", "broken_links", "seo_basics", "goal_coverage"],
 
-  "allow_list": ["create_page", "edit_content"],
+  "_allow_list_comment": "Autonomous default: everything allow-listed, git is the undo. Drop an action from this list to HOLD it for human approval instead (e.g. remove \"remove_page\" if deletions should be reviewed); empty list = every action holds.",
+  "allow_list": ["create_page", "add_asset", "edit_content", "change_design", "remove_page"],
   "recent_runs": 5,
   "site_map_max": 50,
   "_analyze_tool_steps_comment": "agentic analyze: max tool calls (read_page/read_url/web_search) per run; 0 = one-shot",
   "analyze_tool_steps": 8,
 
-  "_git_comment": "Git versioning of the site — REQUIRED for autonomy: edit_content is honestly reversible=false, so the gate only auto-runs it while git makes it recoverable (enabled + per_action + repo healthy/clean). PRE-INITIALIZE: `git init` inside data/site, commit the seed. Set remote to also push (e.g. to a hosting repo); empty = local-only. If git is unavailable/dirty, edit_content safely HOLDS for approval instead.",
+  "_git_comment": "Git versioning of the site — REQUIRED for autonomy: edit_content, change_design and remove_page are honestly reversible=false, so the gate only auto-runs them while git makes them recoverable (enabled + per_action + repo healthy/clean). PRE-INITIALIZE: `git init` inside data/site, commit the seed. Set remote to also push (e.g. to a hosting repo); empty = local-only. If git is unavailable/dirty, those actions safely HOLD for approval instead.",
   "git": {
     "enabled": true,
     "repo_dir": "data/site",

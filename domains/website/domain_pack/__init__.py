@@ -15,7 +15,9 @@ from night_forge_mini.pack import Pack
 from . import analyze as analyze_mod
 from . import metrics as metrics_mod
 from .actions import build_actions
+from .assets import AssetPolicy
 from .connector import WebSourceConnector
+from .constraints import HardConstraints
 from .site import Site
 
 DOMAIN = "website"
@@ -29,7 +31,11 @@ def build_pack(cfg: Config) -> Pack:
                          "operator data, not pack code")
     constraints = _text(cfg.get("constraints", ""))
 
-    site = Site(cfg.path("site"))
+    # constraints are enforced twice: `constraints` (free text) goes into every prompt,
+    # `hard_constraints` (structured) is refused inside the write actions
+    site = Site(cfg.path("site"),
+                hard=HardConstraints.from_config(cfg.get("hard_constraints")),
+                asset_policy=AssetPolicy.from_config(cfg.get("assets")))
 
     conn = cfg.connector
     mode = conn.get("mode", "pages")

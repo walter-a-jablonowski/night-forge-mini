@@ -77,8 +77,8 @@ the closed loop producing a tangible, deployable artifact.
   | `create_page` (create-only, refuses to overwrite) | true | auto-run (reversible) |
   | `add_asset` (download image/file into `data/site/assets/`, create-only) | true | auto-run (reversible) |
   | `edit_content` (overwrites a page body) | **false** | auto-run via git-recoverable |
-  | `change_layout` / `change_design` (templates/CSS) | **false** | auto-run via git-recoverable |
-  | `remove_page` (deletes a file) | **false** | auto-run via git-recoverable |
+  | `change_design` (stylesheets — see phase 2 note: `change_layout` was dropped) | **false** | auto-run via git-recoverable |
+  | `remove_page` (deletes a page; never `index.html`) | **false** | auto-run via git-recoverable |
 
   Unlike the KB pack (which holds everything destructive), here git makes overwrite/delete
   recoverable, so they auto-run by default. Drop an action from the `allow_list` to hold it
@@ -245,8 +245,36 @@ including destructive ones, a seed site, and a config-driven goal. Phasing:
   above; near-blank seed; config-sourced goal/constraints/metrics; stale-edit guard on
   `edit_content`. 21 pack tests (`python -m pytest domains/website/tests`) + a merged-deploy
   smoke run (fake LLM, live Jina fetch, per-action git commit) verified.
-- (2) layout/design + `remove_page` + `add_asset` (images; binary download + the
-  licensing-source ladder above).
+- **(2) — DONE 2026-07-28**: `change_design` (stylesheets), `remove_page`, `add_asset`
+  (binary download + licensing ladder), and the HARD half of constraint enforcement.
+  Decisions taken while building, all narrowing the spec:
+  - **`change_layout` was dropped; `change_design` is CSS-scoped.** The two would have
+    shared `edit_content`'s write policy exactly — a layout change to a page *is* an edit
+    of that page's HTML. `change_design` earns its separate identity by having a genuinely
+    different policy (create-or-overwrite, `.css` only, CSS constraint checks) and by
+    giving restyles their own line in the `allow_list`.
+  - **`image_search` is a new CORE tool** (`blank/night_forge_mini/tools/image_search.py`)
+    — Openverse, keyless, filtered to `license_type=commercial,modification`, returns
+    license + creator + source + attribution. It is domain-agnostic, so it sits next to
+    `web_search` rather than in the pack, and it is model-exposed during analyze.
+  - **`add_asset` enforces the licensing ladder in code** (`domain_pack/assets.py`):
+    rung 1 = host in `assets.allowed_hosts`, rung 2 = an open license (`by`, `by-sa`,
+    `cc0`, `pdm`) in the payload; anything else is refused before any download happens.
+    Attribution is written to a `<name>.license.txt` sidecar, versioned by git with the
+    image. Rung 3 (hotlinking) is not a download and is enforced on the page source
+    instead — `hard_constraints.allow_hotlinking`, default false.
+  - **Hard constraints live in `domain_pack/constraints.py`**, separate from `Site`: the
+    Site owns paths and bytes, `HardConstraints` owns what content is acceptable. A
+    refusal surfaces as `status: error` → logged as an outcome → back to the model next
+    run via `history["failures"]`.
+  - **`remove_page` refuses `index.html`** and stylesheets (pages only). Deleting the home
+    page is the one loss git-revert-ability does not make cheap enough to risk.
+  - `risk_level`: `remove_page` high, `edit_content`/`change_design` medium, the two
+    create-only actions low.
+
+  95 tests (`python -m pytest domains/website/tests blank/tests`) + a merged-deploy smoke
+  run in `try/website/` verified: live Jina capture, per-action git commit, live Openverse
+  search, a real 150 KB image download with its sidecar, and each refusal path.
 - (3) connector `search` mode — *scheduled* searches producing input snippets (fixed
   queries from config). Possibly unnecessary: build it only if model-driven search from
   (1) proves insufficient for discovering new content.

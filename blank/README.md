@@ -54,6 +54,14 @@ common infra. Built-ins are stdlib-only (zero extra dependency):
   (default when `TAVILY_API_KEY` is set; results include content snippets) or **Exa**
   (`EXA_API_KEY`; neural search). Force one via `WEB_SEARCH_PROVIDER=tavily|exa`. Keyed:
   without a key `available()` is False and the tool gracefully doesn't exist.
+- `image_search(query, max_results)` — openly-licensed images via **Openverse**, filtered
+  to licenses permitting commercial use *and* modification. Keyless (always available).
+  Each result carries the direct url, license, creator, source page and the attribution
+  line to reproduce, so a pack downloading one can record its provenance.
+- `fetch_binary(url)` — HTTP(S) GET → raw **bytes** (assets). Same scheme refusal as
+  `fetch_url`, but oversize *raises* instead of truncating (a truncated image is silent
+  corruption) and it carries no `params` schema — bytes are not model-consumable, so it is
+  never exposed via `run_tools`; pack code calls it directly.
 
 Use one from a pack:
 ```python

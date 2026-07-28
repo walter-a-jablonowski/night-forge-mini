@@ -2,12 +2,14 @@
 
 Agentic (`run_tools`): the model gets the bounded SITE MAP plus READ-ONLY tools —
 `read_page` (full source of one site file), plus the core `read_url` (external page as
-clean markdown) and `web_search` (research toward the goal) — so it reads on demand
-instead of receiving pre-stuffed context. The goal and the brand/CI constraints come
-from config and are rendered into the system prompt on EVERY run (soft enforcement,
-phase 1). The metric is measured by the config-activated metric modules; `--fake-llm`
-mode is deterministic so the whole loop runs offline. Sanitizing the model's action
-list is the CORE's job (`sanitize_actions`), not this pack's.
+clean markdown), `web_search` (research toward the goal) and `image_search` (openly
+licensed imagery) — so it reads on demand instead of receiving pre-stuffed context. The
+goal and the brand/CI constraints come from config and are rendered into the system
+prompt on EVERY run; that is the SOFT half of constraint enforcement, the hard half is
+refused inside the write actions (constraints.py). The metric is measured by the
+config-activated metric modules; `--fake-llm` mode is deterministic so the whole loop
+runs offline. Sanitizing the model's action list is the CORE's job
+(`sanitize_actions`), not this pack's.
 """
 from __future__ import annotations
 
@@ -30,12 +32,22 @@ Goal: {goal}
 {constraints}
 You may ONLY propose these actions: {actions}.
   create_page(target=relative/path.html, payload={{content}})   -- new page/file (fails if it exists)
-  edit_content(target=existing/path.html, payload={{content}})  -- replace an existing file's source
+  edit_content(target=existing/path.html, payload={{content}})  -- replace an existing page's source
+  change_design(target=path.css, payload={{content}})           -- write a stylesheet (new or existing)
+  remove_page(target=existing/path.html)                        -- delete a page (never index.html)
+  add_asset(target=assets/name.jpg,
+            payload={{url, license, creator, source, attribution}})  -- download an image
 payload.content is ALWAYS the complete file source (HTML/CSS/...), never a fragment or a diff.
 Keep the site consistent: link a new page from an existing page (usually index.html) in the
-same run, give every page a <title> and a <meta name="description">, keep shared styles working.
-Use the tools before proposing: ALWAYS read_page a file before edit_content on it, and base the
-new source on what is actually there; use web_search / read_url to research content for the goal.
+same run, give every page a <title> and a <meta name="description">, keep shared styles working,
+and when you remove a page, edit the pages that linked to it in the SAME run.
+Images: find them with image_search (openly licensed only), download them with add_asset, then
+reference the LOCAL path (assets/...) from the page. Copy the license/creator/source/attribution
+fields from the search result verbatim into the payload - a download without them is refused,
+and so is an <img> pointing at an external URL.
+Use the tools before proposing: ALWAYS read_page a file before edit_content or change_design on
+it, and base the new source on what is actually there; use web_search / read_url to research
+content for the goal.
 When you are done reading, return STRICT JSON only (no more tool calls):
 {{"finding": "<one sentence>",
   "actions": [{{"name": "...", "target": "...", "rationale": "...", "payload": {{...}}}}]}}
@@ -55,7 +67,7 @@ def analyze(model, *, site: Site, goal: str, constraints: str, snippets: list[di
         model_label = "fake-llm"
     else:
         user = _render_context(goal, site_map[:map_max], snippets, history,
-                               total=len(site_map))
+                               total=len(site_map), assets=site.assets())
         system = SYSTEM.format(goal=goal, constraints=_constraints_block(constraints),
                                actions=sorted(ACTIONS),
                                metric_keys=", ".join(metrics_mod.keys(metric_mods)) or "(none)")
@@ -104,7 +116,7 @@ def _tools(site: Site) -> list[Tool]:
     """read_page + the core research tools. run_tools drops unavailable ones itself
     (e.g. web_search without a key), so this list is the OFFER, not a guarantee."""
     tools = [_read_page_tool(site)]
-    for name in ("read_url", "web_search"):
+    for name in ("read_url", "web_search", "image_search"):
         t = registry.get(name)
         if t is not None:
             tools.append(t)
@@ -146,21 +158,29 @@ def _fake_page(title: str, body: str) -> str:
             f'<h1>{title}</h1>\n<pre>{body[:500]}</pre>\n</main>\n</body>\n</html>\n')
 
 
+# the overwriting actions — each needs the stale-edit guard's fingerprint
+_OVERWRITES = ("edit_content", "change_design")
+
+
 def _stamp_edit_base(site: Site, actions: Any) -> None:
-    """Record the current content fingerprint on each proposed edit_content, so the
-    action can refuse a stale overwrite at approval time (optimistic concurrency).
+    """Record the current content fingerprint on each proposed overwrite, so the action
+    can refuse a stale overwrite at approval time (optimistic concurrency). A
+    change_design targeting a not-yet-existing stylesheet fingerprints as None and is
+    simply not guarded — there is nothing to lose.
     Defensive on shape: `actions` is raw model output (the core sanitizes it later)."""
     if not isinstance(actions, list):
         return
     for a in actions:
-        if isinstance(a, dict) and a.get("name") == "edit_content" and a.get("target"):
+        if isinstance(a, dict) and a.get("name") in _OVERWRITES and a.get("target"):
             if not isinstance(a.get("payload"), dict):
                 a["payload"] = {}
-            a["payload"].setdefault("base", site.fingerprint(str(a["target"])))
+            base = site.fingerprint(str(a["target"]))
+            if base is not None:
+                a["payload"].setdefault("base", base)
 
 
 def _render_context(goal: str, site_map: list[dict], snippets, history: dict[str, list],
-                    total: int | None = None) -> str:
+                    total: int | None = None, assets: list[str] | None = None) -> str:
     head = "SITE MAP"
     if total is not None and len(site_map) < total:
         head += f" (first {len(site_map)} of {total} files)"
@@ -170,6 +190,11 @@ def _render_context(goal: str, site_map: list[dict], snippets, history: dict[str
     recent = "\n".join(f"- {f}" for f in history.get("findings", [])) or "(none)"
 
     parts = [f"GOAL: {goal}", f"{head}:\n{rows}"]
+    if assets:
+        # paths only — binary assets are never read into context, but the model must know
+        # which images already exist so it references them instead of re-downloading
+        parts.append("ASSETS ALREADY DOWNLOADED (reference these by path):\n"
+                     + "\n".join(f"- {a}" for a in assets))
     metrics = history.get("metrics", [])
     if metrics:
         trend = "\n".join("- " + "  ".join(f"{k}={v}" for k, v in m.items()) for m in metrics)

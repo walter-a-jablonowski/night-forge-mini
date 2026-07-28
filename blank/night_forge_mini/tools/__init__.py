@@ -9,6 +9,7 @@ from .registry import Registry, Tool, registry
 from . import fetch_binary as _fetch_binary
 from . import fetch_url as _fetch_url
 from . import html_to_text as _html_to_text
+from . import image_search as _image_search
 from . import read_url as _read_url
 from . import web_search as _web_search
 
@@ -17,6 +18,7 @@ from . import web_search as _web_search
 registry.register(_fetch_binary.TOOL)
 registry.register(_fetch_url.TOOL)
 registry.register(_html_to_text.TOOL)
+registry.register(_image_search.TOOL)
 registry.register(_read_url.TOOL)
 registry.register(_web_search.TOOL)
 

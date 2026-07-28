@@ -59,10 +59,12 @@ The blank system plus pne domain pack is merged in a new folder to get a running
   - which? No convergence detection. N consecutive runs with no metric improvement does not halt anything.
   - kb doaian: search mode breaks quiescence. Website connector phase 3 (connector.py:12) makes input effectively infinite — the watermark stops protecting you, and then only the gate does.
 
-- [text](backlog/website-domain-pack.md) — captured: `web-source` connector (search|pages), config-sourced goal, actions create_page (reversible, auto-runnable) / edit_content / change_layout / remove_page (all reversible=false → held); site under `data/site/` versioned via the new git integration. Effort L (phased).
+- [x] [text](backlog/website-domain-pack.md) — phases 1+2 DONE 2026-07-28. Actions: create_page / add_asset (reversible, auto-run) + edit_content / change_design / remove_page (reversible=false → auto-run only while git is healthy, else held). `change_layout` dropped as redundant with edit_content. New core tool `image_search` (Openverse, keyless). Hard constraints + asset licensing ladder enforced inside the actions. Phase 3 (`search` mode) deferred, build-only-if-needed.
 
-  - See questions in task
-  - Check for errors
+  - [x] See questions in task
+  - [x] Check for errors
+  - [ ] try the merged deploy with a REAL model (so far only --fake-llm end-to-end;
+        try/website/ is a ready merged deploy, needs OPENROUTER_API_KEY)
 
   - First page: simple healthy nutrition
     - Ingredients
@@ -91,7 +93,7 @@ The blank system plus pne domain pack is merged in a new folder to get a running
 
 by priority, effort in parens (reordered 2026-07-06 after the review changes)
 
-1. website-domain-pack (L, = 0.3.0) — the next milestone. Spec updated to the new core contract (history, run_tools, proposal_schema, expected_impact); includes the search tool (Tavily/Exa) exposed to the model. [text](backlog/website-domain-pack.md)
+1. website-domain-pack (L, = 0.3.0) — phases 1+2 DONE (2026-07-28); only phase 3 (connector `search` mode) is left, and it is build-only-if-needed. [text](backlog/website-domain-pack.md)
 2. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped. MORE urgent since agentic analyze: several model calls per run, and tool_call spans map 1:1 to tracer spans.
 3. cost logging (S, roi-measurement) — per-run token/$ visibility; same reason as observability (run_tools multiplies calls). impact_report now supplies the value side for the later ROI join (L).
 4. data-governance (S first step) — scoped read-only creds per connector. Trigger fires WITH 0.3.0: web-source is the 2nd connector (+ search API key).

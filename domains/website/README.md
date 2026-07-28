@@ -3,26 +3,54 @@
 A website under `data/site/` is the materialized artifact; each loop pass captures
 external content and improves the site toward the **goal you set in `config.json`**
 (`site_goal` + optional brand `constraints`) — the pack is the mechanism, the operator
-supplies the objective. Phase 1 of `tasks/backlog/website-domain-pack.md`.
+supplies the objective. Phases 1–2 of `tasks/backlog/website-domain-pack.md`
+(phase 3, scheduled `search` mode, is deferred).
 
 ## What it does
 - **Connector** `web-source` — `pages` mode: a fixed URL list from config, read via the
   core `read_url` tool (Jina Reader → markdown). Snippet id = `url#hash`, so a changed
   page re-ingests and an unchanged one is skipped. A run without new input is a noop.
-- **Goal** — from config (`site_goal`), NOT pack code. `constraints` (string or list)
-  are rendered into every prompt (soft enforcement in phase 1).
+- **Goal** — from config (`site_goal`), NOT pack code.
 - **Agentic analyze** — the model sees the bounded site map and reads on demand:
   `read_page` (site file), `read_url` (external page), `web_search` (research; needs
-  `TAVILY_API_KEY` or `EXA_API_KEY`, disables gracefully without one).
+  `TAVILY_API_KEY` or `EXA_API_KEY`, disables gracefully without one) and `image_search`
+  (openly-licensed imagery via Openverse; keyless).
 - **Metrics** — pluggable modules under `domain_pack/metrics/`, activated in config:
   `pages`, `broken_links`, `seo_basics` (code) and `goal_coverage` (LLM-as-judge).
   Custom metric = drop `metrics/<name>.py` (exposing `KEYS` + `measure(site, *, model,
   goal)`) into the installation and add its name to config.
-- **Actions** — `create_page` (create-only ⇒ reversible) and `edit_content` (overwrites
-  ⇒ NOT reversible). **Git-backed autonomy:** with git enabled + `per_action` + a clean
-  repo, the gate auto-runs `edit_content` because every change is `git revert`-able;
-  without healthy git it safely holds for approval. Phase 2 adds
-  `change_layout`/`change_design`, `remove_page`, `add_asset`.
+
+### Actions
+
+| action | writes | reversible | gate |
+|---|---|---|---|
+| `create_page` | a new page/file (refuses to overwrite) | true | auto-runs |
+| `add_asset` | downloads an image into `assets/` (create-only) | true | auto-runs |
+| `edit_content` | replaces a page's source | **false** | needs git |
+| `change_design` | writes a stylesheet (new or existing) | **false** | needs git |
+| `remove_page` | deletes a page (never `index.html`) | **false** | needs git |
+
+**Git-backed autonomy:** with git enabled + `per_action` + a clean repo, the gate
+auto-runs the irreversible three because every change is `git revert`-able; without
+healthy git they safely hold for approval. Drop an action from `allow_list` to hold it
+regardless; `allow_list: []` holds everything.
+
+### Constraints — two layers
+- **soft** — `constraints` (string or list) is rendered into every prompt. Taste,
+  wording, anything unmechanical.
+- **hard** — `hard_constraints` is checked *inside* the write actions, so a violation
+  fails with `status: error`, writes nothing, and comes back to the model next run via
+  `history["failures"]`:
+  - `forbidden_colors` — refused anywhere in a stylesheet (opt-in),
+  - `required_snippets` — must survive an edit of a page that already had them (opt-in),
+  - `allow_hotlinking` — **default false**: `<img src="http…">` is refused, so images
+    must be downloaded with `add_asset`.
+
+### Images
+`add_asset` will not copy an arbitrary web image. A download is permitted only when the
+host is in `assets.allowed_hosts` (operator-approved) **or** the payload carries an open
+license — `by`, `by-sa`, `cc0`, `pdm` — as returned by `image_search`. The attribution is
+written next to the file as `<name>.license.txt`, so provenance is versioned with it.
 
 ## Seed
 `data/site/` ships a near-blank `index.html` + minimal `style.css` — deliberately
@@ -56,6 +84,8 @@ python -m night_forge_mini trace <run_id>
 ## Files
 - `domain_pack/__init__.py` — `build_pack(cfg) -> Pack` (config-sourced goal/constraints/metrics).
 - `domain_pack/site.py` — `Site`: safe file API over `data/site/` (path safety, map, read, writes).
+- `domain_pack/constraints.py` — `HardConstraints`: the brand/CI rules refused inside the writes.
+- `domain_pack/assets.py` — `AssetPolicy`: the `add_asset` licensing ladder + attribution sidecar.
 - `domain_pack/connector.py` — `WebSourceConnector` (`pages` mode).
 - `domain_pack/actions.py` — action metadata + `build_actions`.
 - `domain_pack/analyze.py` — agentic analysis strategy + prompt + fake mode.
