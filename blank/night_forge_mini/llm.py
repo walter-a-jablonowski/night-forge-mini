@@ -103,7 +103,10 @@ class ModelWrapper:
         try:
             tool = usable.get(name)
             if tool is None:
-                raise LLMError(f"unknown tool {name}")
+                # Name what IS callable: models otherwise retry the same phantom name, or
+                # give up on the work entirely (a pack's ACTION names are the usual mixup).
+                raise LLMError(f"unknown tool {name}; callable tools are: "
+                               f"{', '.join(sorted(usable)) or '(none)'}")
             result, status = str(tool.run(**args)), "ok"
         except Exception as e:  # noqa: BLE001 - the model gets the reason and may retry
             result, status = f"error: {type(e).__name__}: {e}", "error"

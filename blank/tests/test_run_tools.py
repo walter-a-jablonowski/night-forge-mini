@@ -74,6 +74,20 @@ def test_unknown_tool_and_crashing_tool_become_error_results():
   assert all(s['status'] == 'error' for s in w.take_tool_trace())
 
 
+def test_unknown_tool_error_names_the_callable_tools():
+  """A model that invents a tool name (a pack's ACTION names are the usual mixup) must be
+  told what it CAN call, or it retries the phantom name and abandons the work."""
+  w, calls = make_wrapper([
+    response(tool_calls=[tool_call('create_page', '{}', 'a')]),
+    response(content=REPLY),
+  ])
+  w.run_tools('sys', 'usr', tools=[read_tool(lambda id='': 'body')], schema=SCHEMA)
+
+  result = [m['content'] for m in calls[1]['messages'] if m.get('role') == 'tool'][0]
+  assert 'unknown tool create_page' in result
+  assert 'read_entry' in result                       # the offer, not just the refusal
+
+
 def test_budget_exhausted_forces_final_schema_call():
   w, calls = make_wrapper([
     response(tool_calls=[tool_call('read_entry', '{"id": "a"}')]),

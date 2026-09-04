@@ -58,10 +58,13 @@ The blank system plus pne domain pack is merged in a new folder to get a running
     - try/website/ is a ready merged deploy, needs OPENROUTER_API_KEY
     - see also
       - [x] tasks\backlog\website-domain-pack.md
-  - [ ] Real-model run in try/website/
-    - clear current content of /try if out dated and deploy new version there
-    - We implemented OpenRouter as a data source. There is a new free model: https://openrouter.ai/z-ai/glm-5.2:free
-      - this is a pretty smart model
+  - [x] Real-model run in try/website/ — DONE 2026-09-04 (run-7eb9729b), redeployed clean.
+    `z-ai/glm-5.2:free` unusable (only provider 429s); used `dots-studio/dots-3-note-preview:free`.
+    Exposed 3 defects, one file each:
+    - [ ] [text](backlog/run-on-internal-state.md) — no run when only the site has pending work
+    - [x] [text](backlog/website-analyze-prompt-tools.md) — model calls actions as tools — FIXED, rerun run-9d177565 clean
+    - [ ] [text](backlog/watermark-consumed-on-failure.md) — failed analyze eats the input
+    - [ ] [text](backlog/hard-constraints-bypassable-by-action-choice.md) — edit_content on .css skips the color check (found by the rerun)
 
   - [ ] First page that the model could simple healthy nutrition
     - Ingredients

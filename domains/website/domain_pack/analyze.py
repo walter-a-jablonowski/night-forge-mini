@@ -30,24 +30,30 @@ SCHEMA = proposal_schema(sorted(ACTIONS))
 SYSTEM = """You develop and improve a website, file by file.
 Goal: {goal}
 {constraints}
-You may ONLY propose these actions: {actions}.
-  create_page(target=relative/path.html, payload={{content}})   -- new page/file (fails if it exists)
-  edit_content(target=existing/path.html, payload={{content}})  -- replace an existing page's source
-  change_design(target=path.css, payload={{content}})           -- write a stylesheet (new or existing)
-  remove_page(target=existing/path.html)                        -- delete a page (never index.html)
-  add_asset(target=assets/name.jpg,
-            payload={{url, license, creator, source, attribution}})  -- download an image
+
+TOOLS YOU CAN CALL NOW -- read-only, they change nothing: {tools}
+Call them to find out what is true before you decide. ALWAYS read_page a file before
+proposing a change to it, and base the new source on what is actually there.
+
+ACTIONS ARE NOT TOOLS -- you cannot call them, and trying wastes your tool budget.
+An action is a JSON OBJECT you return in the "actions" array of your final answer; the system
+applies it after you finish. Allowed names there, and nowhere else: {actions}.
+  {{"name": "create_page",   "target": "path.html",  "payload": {{"content": "<full source>"}}}}  -- new file (fails if it exists)
+  {{"name": "edit_content",  "target": "path.html",  "payload": {{"content": "<full source>"}}}}  -- replace an existing page
+  {{"name": "change_design", "target": "path.css",   "payload": {{"content": "<full source>"}}}}  -- write a stylesheet (new or existing)
+  {{"name": "remove_page",   "target": "path.html"}}                                              -- delete a page (never index.html)
+  {{"name": "add_asset",     "target": "assets/x.jpg", "payload": {{"url": "...", "license": "...", "creator": "...", "source": "...", "attribution": "..."}}}}  -- download an image
 payload.content is ALWAYS the complete file source (HTML/CSS/...), never a fragment or a diff.
+Propose EVERY change you want in this one answer -- there is no later turn in which you act,
+so never defer work to "a subsequent run".
 Keep the site consistent: link a new page from an existing page (usually index.html) in the
 same run, give every page a <title> and a <meta name="description">, keep shared styles working,
 and when you remove a page, edit the pages that linked to it in the SAME run.
-Images: find them with image_search (openly licensed only), download them with add_asset, then
-reference the LOCAL path (assets/...) from the page. Copy the license/creator/source/attribution
-fields from the search result verbatim into the payload - a download without them is refused,
-and so is an <img> pointing at an external URL.
-Use the tools before proposing: ALWAYS read_page a file before edit_content or change_design on
-it, and base the new source on what is actually there; use web_search / read_url to research
-content for the goal.
+Never link to a page you are not creating in this same answer.
+Images: find them with the image_search tool (openly licensed only), then PROPOSE one
+add_asset action per image, copying the license/creator/source/attribution fields from the
+search result verbatim into the payload -- a download without them is refused, and so is an
+<img> pointing at an external URL. Reference the LOCAL path (assets/...) from the page.
 When you are done reading, return STRICT JSON only (no more tool calls):
 {{"finding": "<one sentence>",
   "actions": [{{"name": "...", "target": "...", "rationale": "...", "payload": {{...}}}}]}}
@@ -68,11 +74,15 @@ def analyze(model, *, site: Site, goal: str, constraints: str, snippets: list[di
     else:
         user = _render_context(goal, site_map[:map_max], snippets, history,
                                total=len(site_map), assets=site.assets())
+
+        # The prompt names the tools actually on offer, so it cannot promise the model a
+        # tool that isn't registered (web_search without a key was one such phantom call).
+        tools = _tools(site) if tool_steps > 0 else []
         system = SYSTEM.format(goal=goal, constraints=_constraints_block(constraints),
-                               actions=sorted(ACTIONS),
+                               actions=sorted(ACTIONS), tools=_tools_line(tools),
                                metric_keys=", ".join(metrics_mod.keys(metric_mods)) or "(none)")
         if tool_steps > 0:  # agentic: model may read pages/sources before proposing
-            result = model.run_tools(system, user, tools=_tools(site), schema=SCHEMA,
+            result = model.run_tools(system, user, tools=tools, schema=SCHEMA,
                                      max_steps=tool_steps)
         else:               # tool_steps 0 = one-shot mode
             result = model.complete_json(system, user, schema=SCHEMA)
@@ -110,6 +120,13 @@ def _read_page_tool(site: Site) -> Tool:
                         "properties": {"path": {"type": "string",
                                                 "description": "relative site path from the map"}},
                         "required": ["path"]})
+
+
+def _tools_line(tools: list[Tool]) -> str:
+    """The tool names for the prompt — built from the real offer, never a hard-coded list."""
+    if not tools:
+        return "(none — answer in one shot, without reading anything)"
+    return ", ".join(t.name for t in tools)
 
 
 def _tools(site: Site) -> list[Tool]:
