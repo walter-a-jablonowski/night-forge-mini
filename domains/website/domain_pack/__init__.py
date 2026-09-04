@@ -18,6 +18,7 @@ from .actions import build_actions
 from .assets import AssetPolicy
 from .connector import WebSourceConnector
 from .constraints import HardConstraints
+from .metrics import broken_links
 from .site import Site
 
 DOMAIN = "website"
@@ -54,8 +55,18 @@ def build_pack(cfg: Config) -> Pack:
                                    metric_mods=metric_mods, map_max=map_max,
                                    tool_steps=tool_steps)
 
+    def pending_work() -> str | None:
+        """Unfinished business the SITE itself carries, so a pass can happen with no new
+        external content. A link to a file that does not exist is the honest case: this
+        loop writes the pages AND the links between them, so it is the loop's own job to
+        finish. Checked with the broken_links metric code — no model, no network — and
+        regardless of whether that metric is active, since this is site integrity rather
+        than a score the operator opted into."""
+        n = int(broken_links.measure(site, model=None, goal=goal)["broken_links"])
+        return f"{n} broken internal link(s) — pages are linked but missing" if n else None
+
     return Pack(domain=DOMAIN, goal=goal, connector=connector,
-                actions=build_actions(site), analyze=analyze)
+                actions=build_actions(site), analyze=analyze, pending_work=pending_work)
 
 
 def _text(v) -> str:

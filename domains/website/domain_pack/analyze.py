@@ -233,5 +233,10 @@ def _render_context(goal: str, site_map: list[dict], snippets, history: dict[str
     if failures:
         fail = "\n".join(f"- {f['name']} {f['target']} — failed: {f['detail']}" for f in failures)
         parts.append(f"RECENTLY FAILED ACTIONS (fix the cause or avoid):\n{fail}")
-    parts.append(f"NEW EXTERNAL CONTENT:\n{snips}")
+    pending = history.get("pending")
+    if pending:
+        # a pass with no new external input: the site itself has something outstanding
+        parts.append(f"WHY YOU ARE RUNNING (no new external content this pass): {pending}.\n"
+                     "Finish that work now, from what the site already contains.")
+    parts.append(f"NEW EXTERNAL CONTENT:\n{snips or '(none this pass)'}")
     return "\n\n".join(parts)

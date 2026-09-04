@@ -5,6 +5,22 @@ known, recorded work outstanding and no way to resume it.
 
 **Effort: S–M.** Touches `loop.py` (the noop guard) + a pack-side "pending work" signal.
 
+**✅ DONE 2026-09-04** — option 1 (pack-declared pending work), with the anti-spin guard.
+- `Pack.pending_work: Callable[[], str | None] | None = None` — optional 5th thing, cheap,
+  no model. Packs that ignore it (kb) behave exactly as before.
+- `loop.py`: runs when `snippets OR pending`; the reason reaches analyze as
+  `history["pending"]` and is rendered into the prompt ("WHY YOU ARE RUNNING").
+  No input record is written on a pending pass — nothing was captured.
+- Anti-spin: `Store.last_run_made_progress()` — a pending pass is refused when the previous
+  run neither captured input nor ran an action successfully, so a pack that keeps reporting
+  the same unfinished work cannot loop forever. New input unblocks it.
+- Website pack: `pending_work` reports broken internal links (the `broken_links` code
+  metric), regardless of whether that metric is active — site integrity, not a score.
+- 6 tests (3 core, 1 pack, 1 prompt, 1 fixture-corrected), each verified failing first; 109 pass.
+- Live: injecting run-9d177565's exact damage (index.html linking to a missing snacks.html)
+  made the loop run with NO new snippets and propose creating that page — the previously
+  stuck scenario. That run then died on malformed model JSON, see `llm-json-retry.md`.
+
 ## Symptom
 Run 1 wrote an `index.html` linking to `ingredients.html` and `meals.html` that were never
 created (see `website-analyze-prompt-tools.md`). The model explicitly deferred them to "a

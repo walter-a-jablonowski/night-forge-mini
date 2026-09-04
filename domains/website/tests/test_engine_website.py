@@ -14,6 +14,7 @@ from domain_pack import site as site_mod
 
 SEED = ('<!DOCTYPE html><html><head><title>New Site</title></head>'
         '<body><main><h1>New Site</h1></main></body></html>')
+SEED_CSS = 'body { background: #111; color: #eee; }'   # pages the pack writes link to it
 
 
 def make_cfg( tmp_path, git_enabled: bool, **extra ) -> Config:
@@ -39,6 +40,7 @@ def make_engine( tmp_path, monkeypatch, *, git_enabled: bool, page_text: str,
   site_dir = tmp_path / 'data' / 'site'
   site_dir.mkdir(parents=True, exist_ok=True)
   (site_dir / 'index.html').write_text(SEED, encoding='utf-8')
+  (site_dir / 'style.css').write_text(SEED_CSS, encoding='utf-8')   # the shipped seed has
   monkeypatch.setattr(conn_mod, '_read_url', lambda url, **kw: page_text)
   cfg = make_cfg(tmp_path, git_enabled, **extra)
   if git_enabled:
@@ -178,7 +180,7 @@ def test_a_refused_write_is_logged_as_a_failed_outcome( tmp_path, monkeypatch ):
   # nothing was written and the loop survived
   outcome = res['ran'][0]['res']['result']
   assert outcome['status'] == 'error' and 'forbidden color' in outcome['detail']
-  assert not (tmp_path / 'data/site/style.css').exists()
+  assert (tmp_path / 'data/site/style.css').read_text(encoding='utf-8') == SEED_CSS
   assert res['git'] == []                              # a failed action is never committed
   # ...and the refusal comes back to the model on the next run
   failures = eng.store.recent_failures(5)
@@ -195,3 +197,22 @@ def test_stamped_base_is_in_the_proposal_log( tmp_path, monkeypatch ):
   records = [json.loads(line) for line in
              (tmp_path / 'data/log.jsonl').read_text(encoding='utf-8').splitlines()]
   assert any(r['type'] == 'proposal' for r in records)
+
+
+def test_pending_work_reports_broken_internal_links( tmp_path, monkeypatch ):
+  """The site's own unfinished business must be able to trigger a pass: run-9d177565 left
+  index.html linking to two pages it never created, and every later run was a noop."""
+  eng = make_engine(tmp_path, monkeypatch, git_enabled=False, page_text='fresh')
+  site_dir = tmp_path / 'data' / 'site'
+
+  assert eng.pack.pending_work() is None                    # seed links to nothing missing
+
+  (site_dir / 'index.html').write_text(
+    '<html><head><title>t</title></head><body><a href="meals.html">m</a></body></html>',
+    encoding='utf-8')
+  reason = eng.pack.pending_work()
+  assert reason and '1' in reason
+
+  (site_dir / 'meals.html').write_text('<html><head><title>m</title></head></html>',
+                                       encoding='utf-8')
+  assert eng.pack.pending_work() is None                    # target exists -> nothing pending

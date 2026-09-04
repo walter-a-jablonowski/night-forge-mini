@@ -17,14 +17,15 @@ class RecordingModel:
 
   def __init__( self ):
     self.system = ''
+    self.user = ''
     self.offered = []
 
   def run_tools( self, system, user, *, tools, schema, max_steps ):
-    self.system, self.offered = system, [t.name for t in tools]
+    self.system, self.user, self.offered = system, user, [t.name for t in tools]
     return {'finding': 'recorded', 'actions': []}
 
   def complete_json( self, system, user, schema=None ):
-    self.system = system
+    self.system, self.user = system, user
     return {'finding': 'recorded', 'actions': []}
 
   def label( self ):
@@ -68,3 +69,15 @@ def test_tools_line_matches_the_tools_actually_offered( tmp_path ):
   assert model.offered                                  # read_page at minimum
   for name in model.offered:
     assert name in section
+
+
+def test_pending_reason_is_rendered_when_there_is_no_new_input( tmp_path ):
+  site_dir = tmp_path / 'site'
+  site_dir.mkdir(parents=True, exist_ok=True)
+  (site_dir / 'index.html').write_text('<html><head><title>x</title></head></html>',
+                                       encoding='utf-8')
+  model = RecordingModel()
+  analyze_mod.analyze(model, site=Site(site_dir), goal='g', constraints='', snippets=[],
+                      history={'pending': '2 broken internal link(s)'}, metric_mods=[])
+  assert '2 broken internal link(s)' in model.user     # the model is told WHY it ran
+  assert '(none this pass)' in model.user              # ...and that there is no new input

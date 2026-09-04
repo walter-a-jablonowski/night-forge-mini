@@ -49,6 +49,12 @@ class Pack:
     actions: dict[str, Action]
     # (model, *, goal, snippets, history) -> {finding, metric, actions, model}
     analyze: Callable[..., dict[str, Any]]
+    # Optional 5th thing: `() -> str | None` — a reason the artifact itself needs a pass
+    # even with no new input (e.g. the site links to a page that does not exist). New
+    # input is not the only reason to think: a loop that writes its artifact can leave it
+    # measurably short of the goal, and would otherwise never get to finish the job.
+    # Must be CHEAP (it runs before every pass) and must not use the model.
+    pending_work: Callable[[], str | None] | None = None
 
 
 def proposal_schema( action_names: list[str] | None = None,

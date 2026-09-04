@@ -32,17 +32,26 @@ class Engine:
         connector = self.pack.connector
         seen = self.store.seen_snippet_ids(connector.name)
         snippets = connector.fetch(seen)
-        if not snippets:
+        pending = self._pending_work() if not snippets else None
+        if not snippets and not pending:
             return {"status": "noop", "reason": "no new snippets"}
+        if pending and not self.store.last_run_made_progress():
+            # anti-spin: the previous pass already ran on this pending reason and changed
+            # nothing, so repeating it would only burn tokens. New input unblocks it again.
+            return {"status": "noop",
+                    "reason": f"pending work ({pending}) but the last run made no progress"}
 
         run_id = new_id("run")
 
-        # (1) Capture
-        self.store.append(Record(run_id=run_id, domain=domain, type=INPUT,
-                                 source=connector.name,
-                                 payload={"connector": connector.name,
-                                          "snippet_ids": [s["id"] for s in snippets],
-                                          "snippets": snippets}))
+        # (1) Capture — only when something was actually fetched; a pending-work pass
+        # captures nothing and must not write an empty input record (the dedup watermark
+        # is derived from these).
+        if snippets:
+            self.store.append(Record(run_id=run_id, domain=domain, type=INPUT,
+                                     source=connector.name,
+                                     payload={"connector": connector.name,
+                                              "snippet_ids": [s["id"] for s in snippets],
+                                              "snippets": snippets}))
 
         # (2) Ingest — the closed loop: not just past findings, but also what the human
         # rejected, what failed, and the metric trend, so the next proposal learns from it.
@@ -52,6 +61,8 @@ class Engine:
                    "rejections": self.store.recent_rejections(n),
                    "failures": self.store.recent_failures(n),
                    "impact": self.store.impact_report(n)}
+        if pending:
+            history["pending"] = pending    # tell analyze WHY it was run without new input
 
         # (3) Analyze (pack builds context + measures metric)
         start = now_iso()
@@ -109,6 +120,19 @@ class Engine:
                 "finding": finding, "metric": metric_value,
                 "model": result.get("model", ""), "ran": ran, "pending": pending,
                 "git": git_results}
+
+    def _pending_work(self) -> str | None:
+        """The pack's optional "the artifact itself needs a pass" signal. A pack that
+        raises here must not stop the loop — a broken hint is not a reason to refuse to
+        run, it just means there is no pending reason this time."""
+        hook = getattr(self.pack, "pending_work", None)
+        if hook is None:
+            return None
+        try:
+            reason = hook()
+        except Exception:  # noqa: BLE001 - a hint, never a hard dependency
+            return None
+        return str(reason) if reason else None
 
     # --- git versioning of the materialized artifacts ----------------------
 

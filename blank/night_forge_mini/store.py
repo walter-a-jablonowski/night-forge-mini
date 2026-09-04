@@ -99,6 +99,24 @@ class Store:
                 seen.update(r.payload.get("snippet_ids", []))
         return seen
 
+    def last_run_made_progress(self) -> bool:
+        """Did the most recent run change anything — capture new input, or run an action
+        successfully? The anti-spin test for pending-work runs: a pass that changed
+        nothing means repeating it on the same reason is pointless. True when nothing has
+        run yet, so a first pass is never blocked."""
+        recs = self.all()
+        if not recs:
+            return True
+        last = recs[-1].run_id
+        for r in recs:
+            if r.run_id != last:
+                continue
+            if r.type == INPUT and r.payload.get("snippet_ids"):
+                return True
+            if r.type == OUTCOME and r.payload.get("status") == "ok":
+                return True
+        return False
+
     def proposed_actions(self) -> dict[str, dict]:
         """All actions ever proposed, by action_id -> {action, run_id}."""
         out: dict[str, dict] = {}

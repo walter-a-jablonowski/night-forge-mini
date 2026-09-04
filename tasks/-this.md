@@ -61,9 +61,12 @@ The blank system plus pne domain pack is merged in a new folder to get a running
   - [x] Real-model run in try/website/ — DONE 2026-09-04 (run-7eb9729b), redeployed clean.
     `z-ai/glm-5.2:free` unusable (only provider 429s); used `dots-studio/dots-3-note-preview:free`.
     Exposed 3 defects, one file each:
-    - [ ] [text](backlog/run-on-internal-state.md) — no run when only the site has pending work
+    - [x] [text](backlog/run-on-internal-state.md) — no run when only the site has pending work — FIXED (Pack.pending_work + anti-spin guard)
+    - [ ] [text](backlog/llm-json-retry.md) — one malformed JSON reply kills a whole run
     - [x] [text](backlog/website-analyze-prompt-tools.md) — model calls actions as tools — FIXED, rerun run-9d177565 clean
-    - [ ] [text](backlog/watermark-consumed-on-failure.md) — failed analyze eats the input
+    - [-] ~~failed analyze eats the input~~ — WRONG, no such bug: `seen_snippet_ids` already
+      counts only runs that reached `analysis`, so a crashed run's snippets are re-offered
+      (verified; covered by blank/tests/test_store.py). Backlog file deleted.
     - [x] [text](backlog/hard-constraints-bypassable-by-action-choice.md) — edit_content on .css skipped the color check — FIXED (check follows the file, not the action)
 
   - [ ] First page that the model could simple healthy nutrition

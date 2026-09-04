@@ -36,9 +36,10 @@ def make_actions( safe_run=None ):
   }
 
 
-def make_engine( tmp_path, analyze, items, allow_list=('safe_act',), actions=None ):
+def make_engine( tmp_path, analyze, items, allow_list=('safe_act',), actions=None,
+                 pending_work=None ):
   pack = Pack(domain='test', goal='g', connector=StubConnector(items),
-              actions=actions or make_actions(), analyze=analyze)
+              actions=actions or make_actions(), analyze=analyze, pending_work=pending_work)
   return Engine(make_cfg(tmp_path, list(allow_list)), pack, fake_llm=True)
 
 
@@ -205,3 +206,51 @@ def test_model_cannot_overrule_pack_gate_metadata( tmp_path ):
   assert r['ran'] == []
   assert r['pending'][0]['reversible'] is False
   assert r['pending'][0]['risk_level'] == 'high'
+
+
+# --- pending work: a run when only the ARTIFACT has something outstanding --
+
+def test_pending_work_runs_without_new_snippets( tmp_path ):
+  """run-9d177565 left the site linking to two pages it never created, and every later
+  pass was `no new snippets` — the artifact's own outstanding work triggered nothing."""
+  seen = []
+
+  def analyze(model, *, goal, snippets, history):
+    seen.append((list(snippets), history.get('pending')))
+    return {'finding': 'f', 'metric': {}, 'actions': [proposal_action('safe_act')]}
+
+  items = [{'id': 's1', 'text': 'hello', 'source': 'x'}]
+  eng = make_engine(tmp_path, analyze, items, pending_work=lambda: '2 broken link(s)')
+  assert eng.run_once()['status'] == 'ok'             # first pass: real input
+
+  r = eng.run_once()                                  # no new input, but work outstanding
+  assert r['status'] == 'ok'
+  assert r['captured'] == 0
+  assert seen[1] == ([], '2 broken link(s)')          # analyze told WHY it was run
+
+
+def test_no_pending_work_still_noops( tmp_path ):
+  analyze = lambda model, **kw: {'finding': 'f', 'metric': {}, 'actions': []}
+  items = [{'id': 's1', 'text': 'hello', 'source': 'x'}]
+
+  eng = make_engine(tmp_path, analyze, items, pending_work=lambda: None)
+  assert eng.run_once()['status'] == 'ok'
+  assert eng.run_once()['status'] == 'noop'
+
+
+def test_pending_work_does_not_spin_when_a_run_changes_nothing( tmp_path ):
+  """A pack that keeps reporting the same unfinished work must not re-run forever: one
+  pass that changes nothing is the stop signal."""
+  proposals = [[proposal_action('safe_act')], [], []]
+
+  def analyze(model, *, goal, snippets, history):
+    return {'finding': 'f', 'metric': {}, 'actions': proposals.pop(0) if proposals else []}
+
+  items = [{'id': 's1', 'text': 'hello', 'source': 'x'}]
+  eng = make_engine(tmp_path, analyze, items, pending_work=lambda: 'still broken')
+
+  assert eng.run_once()['status'] == 'ok'             # input + an action that ran
+  assert eng.run_once()['status'] == 'ok'             # pending, previous run made progress
+  r = eng.run_once()                                  # previous pending run did nothing
+  assert r['status'] == 'noop'
+  assert 'no progress' in r['reason']
