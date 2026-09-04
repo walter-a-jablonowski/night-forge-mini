@@ -29,6 +29,13 @@ from .records import now_iso
 from .tools.registry import Tool
 
 
+JSON_ATTEMPTS = 3    # one call plus two retries when the reply will not parse
+
+_JSON_FIX = ("Your previous reply was not valid JSON ({error}). Send the SAME proposal "
+             "again as STRICT JSON only - no prose, no code fences, no trailing commas, "
+             "and escape every quote and newline inside string values.")
+
+
 class LLMError(RuntimeError):
     pass
 
@@ -69,7 +76,16 @@ class ModelWrapper:
             msg = resp.choices[0].message
             calls = getattr(msg, "tool_calls", None)
             if not calls:  # model is done reading -> its answer is the proposal
-                return _extract_json(msg.content or "")
+                content = msg.content or ""
+                try:
+                    return _extract_json(content)
+                except LLMError as e:
+                    # It finished reading and got the content right, only the JSON wrong —
+                    # hand the error back rather than lose every tool read that led here.
+                    self._trace_json_retry(e)
+                    messages.append({"role": "assistant", "content": content})
+                    messages.append({"role": "user", "content": _JSON_FIX.format(error=e)})
+                    return self._request_json(messages, schema)
             messages.append({"role": "assistant", "content": msg.content or "",
                              "tool_calls": [{"id": tc.id, "type": "function",
                                              "function": {"name": tc.function.name,
@@ -119,8 +135,29 @@ class ModelWrapper:
         return result
 
     def _request_json(self, messages: list[dict], schema: dict | None) -> dict[str, Any]:
-        """One completion that must yield JSON — native `response_format: json_schema`
-        when given (and the provider takes it), tolerant extraction otherwise."""
+        """A completion that must yield JSON — native `response_format: json_schema` when
+        given (and the provider takes it), tolerant extraction otherwise.
+
+        Retried on a PARSE failure: models emit a stray delimiter or a bad escape often
+        enough when the payload is a long source file, and by then the pass has already
+        paid for its tool reads — throwing it away over one formatting slip is the
+        expensive choice. The bad reply and the parse error go back as the correction,
+        which is the only context that makes the retry worth anything."""
+        msgs = list(messages)
+        for attempt in range(JSON_ATTEMPTS):
+            text = self._raw_json_reply(msgs, schema)
+            try:
+                return _extract_json(text)
+            except LLMError as e:
+                if attempt == JSON_ATTEMPTS - 1:
+                    raise
+                self._trace_json_retry(e)
+                msgs = msgs + [{"role": "assistant", "content": text},
+                               {"role": "user", "content": _JSON_FIX.format(error=e)}]
+        raise LLMError("unreachable")  # pragma: no cover - the loop always returns or raises
+
+    def _raw_json_reply(self, messages: list[dict], schema: dict | None) -> str:
+        """The model call itself: structured output when the provider accepts it."""
         client = self._ensure_client()
         kwargs: dict[str, Any] = {"model": self.provider["model"], "messages": messages,
                                   "temperature": 0.2}
@@ -131,14 +168,22 @@ class ModelWrapper:
                     response_format={"type": "json_schema",
                                      "json_schema": {"name": "proposal", "schema": schema}})
                 self._schema_ok = True
-                return _extract_json(resp.choices[0].message.content or "")
+                return resp.choices[0].message.content or ""
             except Exception as e:
                 if not _param_rejected(e):
                     raise
                 self._schema_ok = False  # this provider can't take response_format -> plain from now on
 
         resp = client.chat.completions.create(**kwargs)
-        return _extract_json(resp.choices[0].message.content or "")
+        return resp.choices[0].message.content or ""
+
+    def _trace_json_retry(self, error: Exception) -> None:
+        """A retry is an extra model call inside the analyze step, so it belongs in the
+        same span list the Engine logs — an invisible retry is an invisible cost."""
+        ts = now_iso()
+        self._tool_trace.append({"tool": "json_retry", "args": {}, "status": "error",
+                                 "chars": 0, "start": ts, "end": ts,
+                                 "detail": str(error)[:200]})
 
     def label(self) -> str:
         return f'{self.provider["name"]}:{self.provider["model"]}'

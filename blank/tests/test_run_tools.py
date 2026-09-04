@@ -1,7 +1,7 @@
 """ModelWrapper.run_tools: bounded read-only tool loop ending in a structured proposal."""
 from types import SimpleNamespace
 
-from night_forge_mini.llm import ModelWrapper
+from night_forge_mini.llm import LLMError, ModelWrapper
 from night_forge_mini.pack import proposal_schema
 from night_forge_mini.tools.registry import Tool
 
@@ -119,3 +119,42 @@ def test_tool_result_is_capped():
   w.run_tools('sys', 'usr', tools=[read_tool(big)], schema=SCHEMA, result_cap=16_000)
   tool_msg = [m for m in calls[1]['messages'] if m.get('role') == 'tool'][0]
   assert len(tool_msg['content']) == 16_000
+
+
+# --- a malformed JSON reply must not throw the whole pass away -------------
+
+BROKEN = '{"finding": "f", "actions": [{"name": "add_entry", "target": "t",}]}'   # trailing comma
+
+
+def test_malformed_json_after_reading_is_retried_with_the_error():
+  """The expensive part (the tool reads) is already paid for when the model emits its
+  proposal — losing the pass to one formatting slip wastes all of it (try/website, twice)."""
+  w, calls = make_wrapper([
+    response(tool_calls=[tool_call('read_entry', '{"id": "vpn"}')]),
+    response(content=BROKEN),                         # done reading, but invalid JSON
+    response(content=REPLY),                          # retry succeeds
+  ])
+  out = w.run_tools('sys', 'usr', tools=[read_tool()], schema=SCHEMA)
+  assert out == {'finding': 'f', 'actions': []}
+
+  # the retry carries the bad reply back plus what was wrong with it
+  last = calls[-1]['messages']
+  assert last[-2]['role'] == 'assistant' and last[-2]['content'] == BROKEN
+  assert 'not valid JSON' in last[-1]['content']
+
+
+def test_json_retry_is_bounded_and_then_raises():
+  w, calls = make_wrapper([response(content=BROKEN)] * 4)
+  try:
+    w.complete_json('sys', 'usr', schema=SCHEMA)
+    assert False, 'should have raised'
+  except LLMError as e:
+    assert 'did not return valid JSON' in str(e)
+  assert len(calls) == 3                              # first attempt + 2 retries, no more
+
+
+def test_json_retries_are_visible_in_the_trace():
+  w, _ = make_wrapper([response(content=BROKEN), response(content=REPLY)])
+  assert w.complete_json('sys', 'usr', schema=SCHEMA) == {'finding': 'f', 'actions': []}
+  spans = [s for s in w.take_tool_trace() if s['tool'] == 'json_retry']
+  assert len(spans) == 1 and spans[0]['status'] == 'error'

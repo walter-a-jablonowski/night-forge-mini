@@ -62,7 +62,10 @@ The blank system plus pne domain pack is merged in a new folder to get a running
     `z-ai/glm-5.2:free` unusable (only provider 429s); used `dots-studio/dots-3-note-preview:free`.
     Exposed 3 defects, one file each:
     - [x] [text](backlog/run-on-internal-state.md) — no run when only the site has pending work — FIXED (Pack.pending_work + anti-spin guard)
-    - [ ] [text](backlog/llm-json-retry.md) — one malformed JSON reply kills a whole run
+    - [x] [text](backlog/llm-json-retry.md) — one malformed JSON reply killed a whole run — FIXED (bounded retry with the parse error fed back)
+    - [ ] re-run try/website live to confirm end-to-end: OpenRouter free tier hit its
+      50/day cap 2026-09-04 (resets 2026-09-05 00:00 UTC). A broken link is left injected
+      in data/site/index.html so the next run exercises the pending-work path.
     - [x] [text](backlog/website-analyze-prompt-tools.md) — model calls actions as tools — FIXED, rerun run-9d177565 clean
     - [-] ~~failed analyze eats the input~~ — WRONG, no such bug: `seen_snippet_ids` already
       counts only runs that reached `analysis`, so a crashed run's snippets are re-offered

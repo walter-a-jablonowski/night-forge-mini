@@ -14,6 +14,21 @@ one long payload came back with a JSON defect a few thousand characters in.
 
 **Effort: S.** A bounded retry in `ModelWrapper`.
 
+**✅ DONE 2026-09-04.** `JSON_ATTEMPTS = 3` (one call + two retries) in `llm.py`:
+- `_request_json` splits into the retry loop plus `_raw_json_reply` (the call itself), so
+  the `response_format` fallback and the retry stay separate concerns.
+- Both JSON exit points are covered — the forced finale AND `run_tools`'s "model stopped
+  calling tools" path, which is where both live failures actually happened.
+- The correction carries the bad reply back plus the parse error, so the retry has the
+  context that makes it worth anything.
+- Each retry is logged as a `json_retry` span in the same trace the Engine records, so the
+  extra call is visible rather than hidden.
+- 3 tests, verified failing first; 112 pass.
+
+**Not done:** salvaging a partial action list when all attempts fail (see the pairing note
+below). Live re-verification is still pending — the OpenRouter free tier hit its 50
+requests/day cap on 2026-09-04 (resets 2026-09-05 00:00 UTC).
+
 ## Not truncation
 Checked: an isolated request to the same model returned `finish_reason: stop` and valid
 JSON. The provider is not cutting the response off — the model simply emits a malformed
