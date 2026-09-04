@@ -51,6 +51,26 @@ The blank system plus pne domain pack is merged in a new folder to get a running
 
 - [x] I guess this currently is a endless running system right? Does it already have any stop mechanism?
 
+- [x] [text](backlog/website-domain-pack.md) — phases 1+2 DONE 2026-07-28. Actions: create_page / add_asset (reversible, auto-run) + edit_content / change_design / remove_page (reversible=false → auto-run only while git is healthy, else held). `change_layout` dropped as redundant with edit_content. New core tool `image_search` (Openverse, keyless). Hard constraints + asset licensing ladder enforced inside the actions. Phase 3 (`search` mode) deferred, build-only-if-needed.
+
+  - [x] See questions in task
+  - [x] Check for errors
+    - try/website/ is a ready merged deploy, needs OPENROUTER_API_KEY
+    - see also
+      - [x] tasks\backlog\website-domain-pack.md
+  - [ ] Real-model run in try/website/
+    - clear current content of /try if out dated and deploy new version there
+    - We implemented OpenRouter as a data source. There is a new free model: https://openrouter.ai/z-ai/glm-5.2:free
+      - this is a pretty smart model
+
+  - [ ] First page that the model could simple healthy nutrition
+    - Ingredients
+    - Simple meals
+      - fast to make (sample: put in a boal, heat up, ready)
+      - good combinations of ingredients (nutrients) per meal
+      - cheap (only if possible, price is lower priority)
+
+- [ ] tool-registry.md done ?
 - [ ] Verify
 
   What is missing before a daemon would be safe
@@ -59,21 +79,6 @@ The blank system plus pne domain pack is merged in a new folder to get a running
   - which? No convergence detection. N consecutive runs with no metric improvement does not halt anything.
   - kb doaian: search mode breaks quiescence. Website connector phase 3 (connector.py:12) makes input effectively infinite — the watermark stops protecting you, and then only the gate does.
 
-- [x] [text](backlog/website-domain-pack.md) — phases 1+2 DONE 2026-07-28. Actions: create_page / add_asset (reversible, auto-run) + edit_content / change_design / remove_page (reversible=false → auto-run only while git is healthy, else held). `change_layout` dropped as redundant with edit_content. New core tool `image_search` (Openverse, keyless). Hard constraints + asset licensing ladder enforced inside the actions. Phase 3 (`search` mode) deferred, build-only-if-needed.
-
-  - [x] See questions in task
-  - [x] Check for errors
-  - [ ] try the merged deploy with a REAL model (so far only --fake-llm end-to-end;
-        try/website/ is a ready merged deploy, needs OPENROUTER_API_KEY)
-
-  - First page: simple healthy nutrition
-    - Ingredients
-    - Simple meals
-      - fast to make (sample: put in a boal, heat up, ready)
-      - good combinations of ingredients (nutrients) per meal
-      - cheap (only if possible, price is lower priority)
-
-- [ ] tool-registry.md done ?
 - [ ] Does this app have any mechanism that will block progress for certain actions until a human appoves or do we rely on git / logs only ?
   - allow lists in code (see also diagram)
   - see also backlog below

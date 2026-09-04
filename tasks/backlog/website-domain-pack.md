@@ -1,5 +1,27 @@
 # Domain pack: website (self-improving homepage)
 
+## Status (checked 2026-09-04)
+
+**Phases 0 + 1 + 2 are SHIPPED — the pack is implemented, not new work.** Everything below
+marked ✅ / DONE is in the repo: `domains/website/` (connector, analyze, 5 actions, 4 metric
+modules, seed site, hard constraints, asset licensing) plus the core tool `image_search` in
+`blank/night_forge_mini/tools/`. Merged deploy in `try/website/`.
+96 tests pass: `python -m pytest domains/website/tests blank/tests`.
+
+**Still open:**
+- **(3) connector `search` mode** — the only unbuilt phase, and explicitly build-only-if-needed:
+  model-driven `web_search` during analyze already covers discovery. Caution: scheduled
+  searches make input effectively infinite, so the `seen_ids` watermark stops bounding runs
+  and only the gate does — a goal-reached / convergence stop condition should land first.
+- **Real-model end-to-end run** — so far only `--fake-llm` (with live Jina capture, live
+  Openverse search, a real image download and per-action git commits). `try/website/` is a
+  ready merged deploy and needs `OPENROUTER_API_KEY`.
+- **Owned by other tasks, not by this one** — `approval-ui` (diff of a *held* proposal before
+  it is applied), `autonomous-actions` (the general, risk-classifier version), observability
+  and cost logging (agentic analyze multiplies model calls per run).
+
+---
+
 **Target version: 0.3.0.** Build directly against the post-review core contract (0.2.x):
 `analyze(model, *, goal, snippets, history)`, core-side action sanitization, native
 structured output (`proposal_schema`), agentic analyze (`run_tools`), `expected_impact`.
@@ -8,12 +30,13 @@ The kb pack shows every pattern; see "2026-07-05 contract updates" notes inline 
 **What:** A second domain pack (a `domains/website/` deploy, sibling to `domains/kb/`) whose
 materialized artifact is a **website**. It starts as a minimal dummy site, then on each loop
 pass consumes content **from the internet** — either via web search or a configured list of
-pages — and uses the LLM to **improve the site** toward a goal. It may:
-- **Edit content** of existing pages,
-- **Change layout / design** (templates, CSS, structure, shared components/fragments),
-- **Create or remove sub-pages**,
-- **Add images / assets** (see "Images & assets" below — licensing decides the source),
-- **Improve SEO** — titles, meta descriptions, sitemap.xml/robots.txt, structured data.
+pages — and uses the LLM to **improve the site** toward a goal. It may *(all five ✅ shipped)*:
+- ✅ **Edit content** of existing pages,
+- ✅ **Change layout / design** (CSS; see phase 2 — `change_layout` was dropped as redundant
+  with `edit_content`, `change_design` is the CSS-scoped action),
+- ✅ **Create or remove sub-pages**,
+- ✅ **Add images / assets** (see "Images & assets" below — licensing decides the source),
+- ✅ **Improve SEO** — titles, meta descriptions, sitemap.xml/robots.txt, structured data.
   No new machinery: these are ordinary `edit_content`/`create_page` writes; make SEO an
   explicit improvement dimension in the prompt and a metric key (see metric below).
 
@@ -37,12 +60,14 @@ the closed loop producing a tangible, deployable artifact.
   optionally pushed to a host) — real diffs + `git revert` for layout/content/page changes.
 - Config-driven goal shows the goal can be operator data, not just pack code.
 
-## How it maps to the existing architecture
+## How it maps to the existing architecture — ✅ implemented
 - **One pack per deploy.** The core takes a single `domain_pack`; this is a separate
   deployment (`domains/website/`), not a second pack inside the KB deploy. (Multi-pack in one
   app is still deferred — see the registry note in the main README.)
 - **Connector** `web-source` — `fetch(seen_ids) -> artifacts`, returning fetched page text as
   snippets. Two modes via config: `search` (query the web) or `pages` (a fixed URL list).
+  ✅ `pages` mode is shipped; ⚠️ `search` mode is phase 3 and NOT built — an unknown mode
+  raises in `domain_pack/__init__.py`.
   `pages` mode fetches via the core **`read_url`** (Jina Reader → clean markdown snippets,
   much better model input than raw HTML; `fetch_url`+`html_to_text` as fallback when Jina
   is unreachable). Dedup via the same `seen_ids` watermark; re-fetch = hash of the returned
@@ -74,11 +99,11 @@ the closed loop producing a tangible, deployable artifact.
   honestly `reversible: false`; git-recoverable is what lets them auto-run:
   | action | reversible | gate behavior (autonomous default) |
   |---|---|---|
-  | `create_page` (create-only, refuses to overwrite) | true | auto-run (reversible) |
-  | `add_asset` (download image/file into `data/site/assets/`, create-only) | true | auto-run (reversible) |
-  | `edit_content` (overwrites a page body) | **false** | auto-run via git-recoverable |
-  | `change_design` (stylesheets — see phase 2 note: `change_layout` was dropped) | **false** | auto-run via git-recoverable |
-  | `remove_page` (deletes a page; never `index.html`) | **false** | auto-run via git-recoverable |
+  | ✅ `create_page` (create-only, refuses to overwrite) | true | auto-run (reversible) |
+  | ✅ `add_asset` (download image/file into `data/site/assets/`, create-only) | true | auto-run (reversible) |
+  | ✅ `edit_content` (overwrites a page body) | **false** | auto-run via git-recoverable |
+  | ✅ `change_design` (stylesheets — see phase 2 note: `change_layout` was dropped) | **false** | auto-run via git-recoverable |
+  | ✅ `remove_page` (deletes a page; never `index.html`) | **false** | auto-run via git-recoverable |
 
   Unlike the KB pack (which holds everything destructive), here git makes overwrite/delete
   recoverable, so they auto-run by default. Drop an action from the `allow_list` to hold it
@@ -88,7 +113,7 @@ the closed loop producing a tangible, deployable artifact.
 - **Materialized artifact** = the site files under `data/site/`. The JSONL log stays the
   source of truth; **git** versions `data/site/` and can push to a hosting remote.
 
-## Seed
+## Seed — ✅ shipped
 - *(decided 2026-07-11)* A **very basic, mostly blank start page** under `data/site/`
   (one `index.html` + minimal CSS, near-empty content) so the first run has something to
   improve. The app fills / develops it purely from the user's config goal — the seed carries
@@ -98,7 +123,7 @@ the closed loop producing a tangible, deployable artifact.
   - simple meals — fast to make (sample: put in a bowl, heat up, ready), good nutrient
     combinations per meal, cheap where possible (price is lower priority).
 
-## Images & assets (added 2026-07-06)
+## Images & assets (added 2026-07-06) — ✅ SHIPPED 2026-07-28
 `add_asset(target=assets/<name>, payload={url})` downloads an image/file into the site.
 Create-only (refuses overwrite) → honestly `reversible: true`, auto-runnable like
 `create_page`. Needs a **binary-safe download**: core `fetch_url` decodes text, so
@@ -115,7 +140,7 @@ are not model-consumable → never exposed via `run_tools`; pack code calls it).
 Image **generation** (keyed image-model API as another core tool) is a possible later add —
 it sidesteps licensing entirely but costs money per image.
 
-## Metric modules — interface (decided 2026-07-11)
+## Metric modules — interface (decided 2026-07-11) — ✅ SHIPPED (all four modules)
 The pluggable-metrics decision (see Goal/metric below), made concrete. Design goals: fits the
 existing contract (metric = the flat `{key: number}` dict `analyze` returns; the core just
 records it), follows the tools-registry house style (explicit, no import-time magic), and
@@ -152,7 +177,7 @@ makes operator drop-in trivial because an installation = blank + pack merged on 
 Shipped built-ins: `pages` (count), `broken_links` (internal links only), `seo_basics`
 (pages with title + meta description), `goal_coverage` (judge).
 
-## Open questions
+## Open questions — ✅ all resolved
 - **Web fetching deps — resolved → its own task `tool-registry.md` (DONE).** The core has a
   tool registry + `night_forge_mini/tools/` with stdlib built-ins (`fetch_url`,
   `html_to_text`, and since 2026-07-06 **`web_search`** — Tavily/Exa behind one core tool,
@@ -186,7 +211,7 @@ Shipped built-ins: `pages` (count), `broken_links` (internal links only), `seo_b
   active; `expected_impact` is prompted on exactly those keys.
   **Interface specified 2026-07-11 — see "Metric modules — interface" above.**
 
-## Default mode: self-developing site (git-backed autonomy)
+## Default mode: self-developing site (git-backed autonomy) — ✅ SHIPPED (it is the deploy config)
 **This pack is autonomous by default** — the LLM develops the site on its own, with git as
 the undo. Human approval is **optional** (opt-in), not the norm. It needs **no action-shape
 change**: the actions stay honestly `reversible: false`. The mechanism is the existing
@@ -198,7 +223,7 @@ auto-run when  name in allow_list
 git_recoverable = git.enabled AND granularity == per_action AND repo clean AND git covers repo_dir
 ```
 So "autonomous by default" is just the **shipped config**: git enabled, `per_action`, and the
-destructive actions (`edit_content`, `change_layout`, `remove_page`) in the `allow_list`.
+destructive actions (`edit_content`, `change_design`, `remove_page`) in the `allow_list`.
 Nothing auto-runs that isn't allow-listed (default-deny holds); git is what makes those
 destructive actions safe to allow-list.
 
@@ -222,30 +247,31 @@ classifier required, because every change is recoverable.
 ## Depends on / pairs with
 - **tool-registry** (DONE) — supplies the core `fetch_url` / `html_to_text` / `web_search`
   tools; both `pages` and `search` mode are batteries-included, no pack tool needed.
-- **autonomous-actions** — git-backed autonomy (above) is its first concrete instance; git is
-  the rollback substrate that item requires.
+- **autonomous-actions** — ✅ git-backed autonomy (above) shipped as its first concrete
+  instance; the general risk-classifier version stays OPEN in that task.
 - **git integration** (DONE) — versioning + push of `data/site/`.
 - **bounded-retrieval** (DONE) — only the site **map** needs bounding now; since
   agentic-analyze (2026-07-05) the model reads full pages on demand via `read_page`
   instead of receiving a pre-sliced context.
-- **approval-ui** / **stale-edit-guard** — diffs + lost-update protection matter more here
-  (overwrite + delete are the common case, not the exception).
+- **approval-ui** (OPEN, other task) / **stale-edit-guard** (✅ DONE, wired on `edit_content`)
+  — diffs + lost-update protection matter more here (overwrite + delete are the common
+  case, not the exception).
 
 **Effort:** L — new web connector (+ optional search-API key), several file-shaped actions
 including destructive ones, a seed site, and a config-driven goal. Phasing:
-- **(0) core: git-recoverable floor — DONE.** The gate's hard floor is now
+- **(0) core: git-recoverable floor — ✅ DONE.** The gate's hard floor is now
   `reversible OR git_recoverable` (`gate.can_auto_run`), with `Git.recoverable()`
   (enabled + `per_action` + repo healthy + clean) re-checked per action, so a dirty repo /
   failed commit makes destructive actions safely hold. Shipped early via the **KB pack**,
   which is now its first consumer (`edit_entry` allow-listed + git on) — so the website pack
   inherits this for free and starts at (1).
-- **(1) — DONE 2026-07-11** (`domains/website/`): `pages` connector (via `read_url`) +
+- **(1) — ✅ DONE 2026-07-11** (`domains/website/`): `pages` connector (via `read_url`) +
   `create_page`/`edit_content` on static HTML; `web_search` + `read_url` + `read_page`
   handed into `run_tools`; the four metric modules (incl. `seo_basics`) per the interface
   above; near-blank seed; config-sourced goal/constraints/metrics; stale-edit guard on
   `edit_content`. 21 pack tests (`python -m pytest domains/website/tests`) + a merged-deploy
   smoke run (fake LLM, live Jina fetch, per-action git commit) verified.
-- **(2) — DONE 2026-07-28**: `change_design` (stylesheets), `remove_page`, `add_asset`
+- **(2) — ✅ DONE 2026-07-28**: `change_design` (stylesheets), `remove_page`, `add_asset`
   (binary download + licensing ladder), and the HARD half of constraint enforcement.
   Decisions taken while building, all narrowing the spec:
   - **`change_layout` was dropped; `change_design` is CSS-scoped.** The two would have
@@ -272,9 +298,11 @@ including destructive ones, a seed site, and a config-driven goal. Phasing:
   - `risk_level`: `remove_page` high, `edit_content`/`change_design` medium, the two
     create-only actions low.
 
-  95 tests (`python -m pytest domains/website/tests blank/tests`) + a merged-deploy smoke
+  95 tests (`python -m pytest domains/website/tests blank/tests`; 96 as of 2026-09-04)
+  + a merged-deploy smoke
   run in `try/website/` verified: live Jina capture, per-action git commit, live Openverse
   search, a real 150 KB image download with its sidecar, and each refusal path.
-- (3) connector `search` mode — *scheduled* searches producing input snippets (fixed
-  queries from config). Possibly unnecessary: build it only if model-driven search from
-  (1) proves insufficient for discovering new content.
+- **(3) — ⚠️ OPEN, the only unbuilt phase**: connector `search` mode — *scheduled* searches
+  producing input snippets (fixed queries from config). Possibly unnecessary: build it only
+  if model-driven search from (1) proves insufficient for discovering new content. Note it
+  removes the watermark's natural quiescence — see Status at the top.
