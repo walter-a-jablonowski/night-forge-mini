@@ -64,7 +64,7 @@ The blank system plus pne domain pack is merged in a new folder to get a running
     - [ ] [text](backlog/run-on-internal-state.md) — no run when only the site has pending work
     - [x] [text](backlog/website-analyze-prompt-tools.md) — model calls actions as tools — FIXED, rerun run-9d177565 clean
     - [ ] [text](backlog/watermark-consumed-on-failure.md) — failed analyze eats the input
-    - [ ] [text](backlog/hard-constraints-bypassable-by-action-choice.md) — edit_content on .css skips the color check (found by the rerun)
+    - [x] [text](backlog/hard-constraints-bypassable-by-action-choice.md) — edit_content on .css skipped the color check — FIXED (check follows the file, not the action)
 
   - [ ] First page that the model could simple healthy nutrition
     - Ingredients

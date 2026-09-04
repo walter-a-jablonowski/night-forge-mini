@@ -180,3 +180,22 @@ def test_add_asset_reports_a_failed_download( site, monkeypatch ):
   res = site.add_asset('assets/big.png', {'url': 'https://any.host/big.png', **OPEN})
   assert res['status'] == 'error' and 'download failed' in res['detail']
   assert not (site.dir / 'assets/big.png').exists()
+
+
+def test_every_write_enforces_the_css_constraint_on_a_stylesheet( tmp_path ):
+  """A hard constraint a model can route around by picking another action is a soft one:
+  edit_content on a .css used to skip check_css entirely (found in run-9d177565)."""
+  site = Site(tmp_path / 'site', hard=HardConstraints(forbidden_colors=['blue']))
+  css = tmp_path / 'site' / 'style.css'
+  css.parent.mkdir(parents=True, exist_ok=True)
+  css.write_text('body { color: white; }', encoding='utf-8')
+  bad = 'body { color: blue; }'
+
+  for name, target in (('create_page', 'new.css'), ('edit_content', 'style.css'),
+                       ('change_design', 'style.css')):
+    res = getattr(site, name)(target, {'content': bad})
+    assert res['status'] == 'error', f'{name} wrote forbidden CSS'
+    assert 'forbidden color' in res['detail']
+
+  assert css.read_text(encoding='utf-8') == 'body { color: white; }'
+  assert not (tmp_path / 'site' / 'new.css').exists()

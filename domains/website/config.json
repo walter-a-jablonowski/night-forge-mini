@@ -35,7 +35,7 @@
     "Dark background with warm accent colors (orange/gold); green only where it means success."
   ],
 
-  "_hard_constraints_comment": "HARD enforcement — checked inside the write actions, a violating action fails with status=error (logged, and fed back to the model next run). forbidden_colors: substrings refused anywhere in a stylesheet. required_snippets: must survive an edit of a page that already contained them. Both are opt-in (empty = nothing to violate). allow_hotlinking is a FLOOR, active even without this block: false refuses <img src=\"http...\"> so images must be downloaded via add_asset; set true to opt out.",
+  "_hard_constraints_comment": "HARD enforcement — checked inside the write actions, a violating action fails with status=error (logged, and fed back to the model next run). forbidden_colors: refused in any stylesheet (whichever action writes it) and in a page's <style> blocks / style attributes; matched as whole color values, so .blueberry-card is fine. required_snippets: must survive an edit of a page that already contained them. Both are opt-in (empty = nothing to violate). allow_hotlinking is a FLOOR, active even without this block: false refuses <img src=\"http...\"> so images must be downloaded via add_asset; set true to opt out.",
   "hard_constraints": {
     "forbidden_colors": ["blue", "#0000ff"],
     "required_snippets": [],

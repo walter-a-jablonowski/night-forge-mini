@@ -41,7 +41,8 @@ regardless; `allow_list: []` holds everything.
 - **hard** — `hard_constraints` is checked *inside* the write actions, so a violation
   fails with `status: error`, writes nothing, and comes back to the model next run via
   `history["failures"]`:
-  - `forbidden_colors` — refused anywhere in a stylesheet (opt-in),
+  - `forbidden_colors` — refused in any stylesheet, whichever action writes it, and in
+    a page's `<style>` blocks and `style=""` attributes (opt-in),
   - `required_snippets` — must survive an edit of a page that already had them (opt-in),
   - `allow_hotlinking` — **default false**: `<img src="http…">` is refused, so images
     must be downloaded with `add_asset`.

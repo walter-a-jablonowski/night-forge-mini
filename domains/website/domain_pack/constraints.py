@@ -16,7 +16,8 @@ written), this is policy (what content is acceptable). Mixing them would make ei
 untestable without the other.
 
 Config (`hard_constraints`, all keys optional):
-  forbidden_colors  ["#0000ff", "blue"]   substrings refused inside CSS
+  forbidden_colors  ["#0000ff", "blue"]   refused in any stylesheet AND in a page's
+                                          <style> blocks / style="" attributes
   required_snippets ["assets/logo.svg"]   must survive an edit of a page that had them
   allow_hotlinking  false                 external <img src="http..."> refused
 
@@ -28,11 +29,26 @@ go through `add_asset` instead. Set it true to opt out.
 from __future__ import annotations
 
 import re
+from pathlib import PurePosixPath
 from typing import Any
+
+# suffixes whose whole content is CSS (mirrors site.STYLES, kept here so policy does not
+# import the file API — the dependency runs the other way)
+STYLE_SUFFIXES = {".css"}
 
 # external image reference in page source; `add_asset` + a relative src is the wanted path
 _EXTERNAL_IMG = re.compile(r"""<img\b[^>]*\bsrc\s*=\s*["'](https?://[^"']+)["']""",
                            re.IGNORECASE)
+
+# the CSS regions of a page: <style> blocks and style="" attributes
+_STYLE_BLOCK = re.compile(r"<style\b[^>]*>(.*?)</style>", re.IGNORECASE | re.DOTALL)
+_STYLE_ATTR = re.compile(r"""\bstyle\s*=\s*["']([^"']*)["']""", re.IGNORECASE)
+
+
+def _inline_css(page: str) -> list[str]:
+    """Every CSS fragment embedded in page source, so a stylesheet rule cannot be evaded
+    by inlining the same declaration into the HTML."""
+    return _STYLE_BLOCK.findall(page) + _STYLE_ATTR.findall(page)
 
 
 def _color_pattern(color: str) -> re.Pattern:
@@ -63,6 +79,16 @@ class HardConstraints:
                    required_snippets=cfg.get("required_snippets"),
                    allow_hotlinking=cfg.get("allow_hotlinking", False))
 
+    def check(self, target: str, content: str, *, previous: str | None = None) -> str | None:
+        """THE entry point for the write actions: the rules that apply follow the FILE, not
+        the action that happens to be writing it. Binding them to actions instead left
+        `forbidden_colors` enforced on `change_design` but skipped when the same stylesheet
+        was written through `edit_content` — a hard constraint the model could route around
+        by picking the other action, which is exactly what run-9d177565 did."""
+        if PurePosixPath(str(target)).suffix.lower() in STYLE_SUFFIXES:
+            return self.check_css(content)
+        return self.check_page(content, previous=previous)
+
     def check_css(self, css: str) -> str | None:
         """Forbidden brand colors used as VALUES anywhere in a stylesheet."""
         hits = [c for c, pattern in self._color_res if pattern.search(css)]
@@ -74,6 +100,12 @@ class HardConstraints:
         """Page source policy. `previous` is the file's current content on an overwrite:
         a required snippet only has to survive where it already was, so adding the rule
         later never blocks edits to pages that never carried the logo/nav."""
+        # A page carries CSS too — in <style> blocks and style="" attributes. Only those
+        # regions are checked, never the prose: a nutrition page may write "blue cheese".
+        for css in _inline_css(page):
+            reason = self.check_css(css)
+            if reason:
+                return reason
         if not self.allow_hotlinking:
             external = _EXTERNAL_IMG.findall(page)
             if external:

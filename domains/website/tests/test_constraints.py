@@ -93,3 +93,29 @@ def test_sidecar_records_the_full_provenance():
   assert 'https://any.host/x.jpg' in text
   assert 'by-sa 4.0' in text and 'Jane' in text and 'CC BY-SA' in text
   assert sidecar_text('https://any.host/x.jpg', {}).strip().endswith('x.jpg')  # url only
+
+
+# --- the constraint must follow the FILE, not the action name ---------------
+
+def test_check_routes_by_target_suffix():
+  # regression (run-9d177565): the model wrote style.css through edit_content, and
+  # edit_content only ran the page checks -> forbidden_colors was silently skipped.
+  hard = HardConstraints(forbidden_colors=['blue'])
+  assert hard.check('style.css', 'a { color: blue; }') is not None
+  assert hard.check('sub/theme.css', 'a { color: blue; }') is not None
+  assert hard.check('page.html', '<p>blue cheese is a food</p>') is None   # prose, not CSS
+
+
+def test_css_rules_also_apply_inside_page_source():
+  # the same color is reachable through a <style> block or a style="" attribute
+  hard = HardConstraints(forbidden_colors=['blue'])
+  assert hard.check('page.html', '<style>a { color: blue; }</style>') is not None
+  assert hard.check('page.html', '<p style="color: blue">x</p>') is not None
+  assert hard.check('page.html', '<style>a { color: gold; }</style>') is None
+
+
+def test_page_rules_still_apply_to_pages_through_check():
+  hard = HardConstraints(required_snippets=['assets/logo.svg'])
+  before = '<header><img src="assets/logo.svg"></header>'
+  assert hard.check('page.html', '<p>gone</p>', previous=before) is not None
+  assert hard.check('page.html', '<img src="https://ex.am/x.jpg">') is not None

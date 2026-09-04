@@ -154,7 +154,7 @@ class Site:
         content = self._content(payload)
         if content is None:
             return {"status": "error", "detail": "empty content"}
-        reason = self.hard.check_page(content)
+        reason = self.hard.check(target, content)
         if reason:
             return {"status": "error", "detail": f"refused: {reason}"}
         f.parent.mkdir(parents=True, exist_ok=True)
@@ -173,7 +173,7 @@ class Site:
         if self._stale(f, payload):
             return {"status": "error",
                     "detail": f"{self.rel(f)} changed since proposed; re-run to re-propose"}
-        reason = self.hard.check_page(content, previous=f.read_text(encoding="utf-8"))
+        reason = self.hard.check(target, content, previous=f.read_text(encoding="utf-8"))
         if reason:
             return {"status": "error", "detail": f"refused: {reason}"}
         f.write_text(content, encoding="utf-8")
@@ -192,7 +192,7 @@ class Site:
         if f.is_file() and self._stale(f, payload):
             return {"status": "error",
                     "detail": f"{self.rel(f)} changed since proposed; re-run to re-propose"}
-        reason = self.hard.check_css(content)
+        reason = self.hard.check(target, content)
         if reason:
             return {"status": "error", "detail": f"refused: {reason}"}
         verb = "restyled" if f.is_file() else "created"

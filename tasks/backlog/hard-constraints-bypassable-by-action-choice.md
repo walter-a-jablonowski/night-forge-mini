@@ -6,6 +6,13 @@ CSS checks. A "hard" constraint that a model can route around is a soft one.
 
 **Effort: XS–S.** Dispatch the check by what the FILE is, not by which action was named.
 
+**✅ DONE 2026-09-04.** `HardConstraints.check(target, content, previous=)` is now the single
+entry point and routes by suffix; `create_page` / `edit_content` / `change_design` all call it
+(`site.py`). `check_page` additionally runs the CSS rules over a page's `<style>` blocks and
+`style=""` attributes, so inlining is not an escape either — prose is untouched, a page may
+still say "blue cheese". 4 tests written failing first, then fixed; 104 pass. Verified live in
+`try/website/` (run-b1e9637c: 4 writes, no false refusals).
+
 ## Reproduced
 ```python
 site = Site(d, hard=HardConstraints(forbidden_colors=['blue', '#0000ff']))
