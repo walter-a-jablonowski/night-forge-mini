@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from night_forge_mini.llm import ModelWrapper, _extract_json
+from night_forge_mini.llm import LLMError, ModelWrapper, _extract_json
 from night_forge_mini.pack import proposal_schema
 
 PROVIDER = {'name': 'p', 'model': 'm', 'base_url': 'http://localhost', 'api_key_env': 'K'}
@@ -92,3 +92,19 @@ def test_client_timeout_and_retries_are_bounded_and_configurable():
   tuned = dict(PROVIDER, timeout=5, max_retries=0)
   c = ModelWrapper(tuned)._ensure_client()
   assert c.timeout == 5.0 and c.max_retries == 0
+
+
+def test_extract_json_turns_any_parse_failure_into_a_retryable_llm_error():
+  """A model once answered the goal_coverage judge with a 64714-digit number (run-a257a9c6).
+  json.loads raises a plain ValueError there, not JSONDecodeError, so it escaped both the
+  tolerant extraction and the JSON retry and surfaced as a crashed metric."""
+  huge = '{"score": ' + '9' * 5000 + ', "reason": "x"}'
+  with pytest.raises(LLMError):
+    _extract_json(huge)
+
+
+def test_extract_json_requires_an_object():
+  # the declared return type is a dict; a bare array/string must be retryable, not a
+  # surprise type that blows up in the caller
+  with pytest.raises(LLMError):
+    _extract_json('[1, 2, 3]')
