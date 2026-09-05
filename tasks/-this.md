@@ -70,6 +70,8 @@ The blank system plus pne domain pack is merged in a new folder to get a running
       (3/5 refused in run-393b4eee); NO FIX NEEDED — the failure feedback self-corrected it next run
     - [x] [text](backlog/json-parse-failures-must-be-retryable.md) — a 64714-digit number crashed the
       judge metric because ValueError != JSONDecodeError — FIXED
+    - [ ] [text](backlog/write-actions-accept-wrong-file-shape.md) — a full HTML page was written
+      into style.css; no guard and no metric noticed for a whole run cycle
     - [x] [text](backlog/website-analyze-prompt-tools.md) — model calls actions as tools — FIXED, rerun run-9d177565 clean
     - [-] ~~failed analyze eats the input~~ — WRONG, no such bug: `seen_snippet_ids` already
       counts only runs that reached `analysis`, so a crashed run's snippets are re-offered
