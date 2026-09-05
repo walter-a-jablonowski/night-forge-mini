@@ -62,7 +62,9 @@ The callable set is only `read_page` + whatever `_tools()` registers (`read_url`
    read_url to research" even when no `TAVILY_API_KEY`/`EXA_API_KEY` makes `web_search`
    registrable — one of the six failed calls was exactly this. Build that sentence from the
    registered tool list.
-4. Optional, cheap: make `run_tools` answer an unknown tool name that matches a known ACTION
+4. *(built as the generic form: the error now names the callable tools, which proved enough —
+   run-9d177565 and every run after it made zero phantom tool calls.)* Optional, cheap: make
+   `run_tools` answer an unknown tool name that matches a known ACTION
    with a targeted message — `"create_page is an action, not a tool: return it in the actions
    array of your final JSON"` — instead of the generic `unknown tool`. The model self-corrects
    inside the same run rather than giving up.
@@ -72,7 +74,7 @@ Pack test with a scripted model that emits a `create_page` **tool call**: assert
 proposes `create_page` as an action (via the targeted error in (4)), and that the prompt built
 by `analyze` lists no action name in its tools section.
 
-## Minor, same run
+## Minor, same run — split out to `backlog/metric-display-rounding.md`
 - `goal_coverage` printed `1e-16` — the judge returned a tiny float instead of `0`. Clamping
   is correct (`max(0.0, min(10.0, …))`), it is only the display; round metric values for the
   CLI line.

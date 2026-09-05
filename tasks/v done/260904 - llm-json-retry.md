@@ -25,9 +25,13 @@ one long payload came back with a JSON defect a few thousand characters in.
   extra call is visible rather than hidden.
 - 3 tests, verified failing first; 112 pass.
 
-**Not done:** salvaging a partial action list when all attempts fail (see the pairing note
-below). Live re-verification is still pending — the OpenRouter free tier hit its 50
-requests/day cap on 2026-09-04 (resets 2026-09-05 00:00 UTC).
+**Verified live 2026-09-05** — run-a257a9c6 logged **2 `json_retry` spans** (`Expecting ','
+delimiter: line 1 column 5496` and a reply with no JSON at all) and still completed with
+5/5 actions applied. Before this fix that run would have died twice over; instead the cost
+was two extra model calls, visible in the trace.
+
+**Not done:** salvaging a partial action list when all attempts fail — split out as
+`backlog/salvage-partial-model-json.md`.
 
 ## Not truncation
 Checked: an isolated request to the same model returned `finish_reason: stop` and valid
@@ -49,8 +53,8 @@ proposal as strict JSON"). Bound it (2 attempts), keep it in `ModelWrapper` so b
 `complete_json` and the `run_tools` finale benefit, and log each retry so the cost is visible
 rather than hidden.
 
-Worth pairing with: when the retry also fails, salvage what is parseable rather than losing
-the run — the core already sanitizes actions, so a partial list is safe to accept.
+Worth pairing with salvaging a partial parse when every attempt fails — not built here,
+moved to `backlog/salvage-partial-model-json.md`.
 
 ## Note
 The tool budget is spent BEFORE this failure, so a lost run is not cheap: the model had made

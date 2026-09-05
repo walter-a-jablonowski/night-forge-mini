@@ -56,7 +56,7 @@ is *too* strong a stop condition, halting while the goal is measurably unmet. Bo
 same thing — **"new input" is the wrong sole trigger**; the honest one is "new input OR the
 artifact is measurably short of the goal".
 
-## Options
+## Options *(1 was built; 2 and 3 moved to `backlog/run-when-metric-below-target.md`)*
 1. **Pack-declared pending work** (preferred — no new machinery, keeps the core
    domain-agnostic). Optional `Pack.pending_work(...) -> str | None`; the noop guard becomes
    `if not snippets and not pending:`. The website pack returns a reason when

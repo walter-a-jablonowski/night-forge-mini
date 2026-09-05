@@ -114,7 +114,7 @@ Advanced
 
 - Wahlweise Aktionen als file only, check at end, then run later
 - Anything weak in /backlog? Needs improvement?
-- [ ] Add stuff like [text](backlog/domain-pack-template.md)
+- [ ] Add stuff like [text](v%20done/260621%20-%20domain-pack-template.md)
 
 
 Done
@@ -134,23 +134,26 @@ Done
   - [x] Real-model run in try/website/ — DONE 2026-09-04 (run-7eb9729b), redeployed clean.
     `z-ai/glm-5.2:free` unusable (only provider 429s); used `dots-studio/dots-3-note-preview:free`.
     Exposed 3 defects, one file each:
-    - [x] [text](backlog/run-on-internal-state.md) — no run when only the site has pending work — FIXED (Pack.pending_work + anti-spin guard)
-    - [x] [text](backlog/llm-json-retry.md) — one malformed JSON reply killed a whole run — FIXED (bounded retry with the parse error fed back)
+    - [x] [text](v%20done/260904%20-%20run-on-internal-state.md) — no run when only the site has pending work — FIXED (Pack.pending_work + anti-spin guard)
+    - [x] [text](v%20done/260904%20-%20llm-json-retry.md) — one malformed JSON reply killed a whole run — FIXED (bounded retry with the parse error fed back)
     - [x] re-run try/website live — DONE 2026-09-05. run-a257a9c6 fired with `captured: 0`
       (pending-work path, no new input), 5/5 actions ran, snacks.html created, site now
       4 pages / 0 broken links / 4 SEO. Two new findings, one file each:
-    - [-] [text](backlog/website-action-precondition-confusion.md) — wrong action for the target state
+    - [-] [text](v%20done/260905%20-%20website-action-precondition-confusion.md) — wrong action for the target state
       (3/5 refused in run-393b4eee); NO FIX NEEDED — the failure feedback self-corrected it next run
-    - [x] [text](backlog/json-parse-failures-must-be-retryable.md) — a 64714-digit number crashed the
+    - [x] [text](v%20done/260905%20-%20json-parse-failures-must-be-retryable.md) — a 64714-digit number crashed the
       judge metric because ValueError != JSONDecodeError — FIXED
     - [x] [text](v%20done/260905%20-%20write-actions-accept-wrong-file-shape.md) — a full HTML page
       was written into style.css; no guard noticed — FIXED (shape floor: content must match the
       file kind). Leftover idea split out: [text](backlog/styles-ok-metric.md)
-    - [x] [text](backlog/website-analyze-prompt-tools.md) — model calls actions as tools — FIXED, rerun run-9d177565 clean
+    - all resolved files archived to tasks/v done/ (260904/260905). Leftovers kept as new
+      backlog items: [text](backlog/styles-ok-metric.md), [text](backlog/salvage-partial-model-json.md),
+      [text](backlog/run-when-metric-below-target.md), [text](backlog/metric-display-rounding.md)
+    - [x] [text](v%20done/260904%20-%20website-analyze-prompt-tools.md) — model calls actions as tools — FIXED, rerun run-9d177565 clean
     - [-] ~~failed analyze eats the input~~ — WRONG, no such bug: `seen_snippet_ids` already
       counts only runs that reached `analysis`, so a crashed run's snippets are re-offered
       (verified; covered by blank/tests/test_store.py). Backlog file deleted.
-    - [x] [text](backlog/hard-constraints-bypassable-by-action-choice.md) — edit_content on .css skipped the color check — FIXED (check follows the file, not the action)
+    - [x] [text](v%20done/260904%20-%20hard-constraints-bypassable-by-action-choice.md) — edit_content on .css skipped the color check — FIXED (check follows the file, not the action)
 
 ### 2026-07-11
 
@@ -226,7 +229,7 @@ Done
 
   The exact goal for the LLM and how to improve the website is given by the user in config.
 
-- [x] Git integration to version the materialized artifacts (needed for the website pack) [text](backlog/git-integration.md) — no git integration today; history lives only in the append-only JSONL log, materialized files keep latest version only.
+- [x] Git integration to version the materialized artifacts (needed for the website pack) [text](v%20done/260626%20-%20git-integration.md) — no git integration today; history lives only in the append-only JSONL log, materialized files keep latest version only.
 
 - [x]
 
@@ -253,7 +256,7 @@ Done
 
 - [x] I want to be able to make multiple different systems with idea_2.md.
 
-  Variant 1: see tasks/backlog/domain-pack-template.md
+  Variant 1: see tasks/v%20done/260621%20-%20domain-pack-template.md
 
   Variant 2: We extract the inintal project idea "knowledge base" from idea_2.md and put it in a BUILD.md so that idea_2.md is resusable and we could write multiple BUILD.md files. One BUILD-?.md plus idea_2.md is used to implement a specialized system.
 
