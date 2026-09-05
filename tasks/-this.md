@@ -71,6 +71,8 @@ The blank system plus pne domain pack is merged in a new folder to get a running
       counts only runs that reached `analysis`, so a crashed run's snippets are re-offered
       (verified; covered by blank/tests/test_store.py). Backlog file deleted.
     - [x] [text](backlog/hard-constraints-bypassable-by-action-choice.md) — edit_content on .css skipped the color check — FIXED (check follows the file, not the action)
+ 
+  - [ ] Add Claude Code as AI (if missing)
 
   - [ ] First page that the model could simple healthy nutrition
     - Ingredients
