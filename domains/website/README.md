@@ -38,9 +38,11 @@ regardless; `allow_list: []` holds everything.
 ### Constraints — two layers
 - **soft** — `constraints` (string or list) is rendered into every prompt. Taste,
   wording, anything unmechanical.
-- **hard** — `hard_constraints` is checked *inside* the write actions, so a violation
-  fails with `status: error`, writes nothing, and comes back to the model next run via
-  `history["failures"]`:
+- **hard** — checked *inside* the write actions, so a violation fails with
+  `status: error`, writes nothing, and comes back to the model next run via
+  `history["failures"]`. Two floors always apply (no config needed): **shape** — an HTML
+  document is refused for a `.css` target and a page must carry markup — and
+  `allow_hotlinking`. The `hard_constraints` keys are:
   - `forbidden_colors` — refused in any stylesheet, whichever action writes it, and in
     a page's `<style>` blocks and `style=""` attributes (opt-in),
   - `required_snippets` — must survive an edit of a page that already had them (opt-in),

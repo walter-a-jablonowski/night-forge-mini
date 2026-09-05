@@ -119,3 +119,44 @@ def test_page_rules_still_apply_to_pages_through_check():
   before = '<header><img src="assets/logo.svg"></header>'
   assert hard.check('page.html', '<p>gone</p>', previous=before) is not None
   assert hard.check('page.html', '<img src="https://ex.am/x.jpg">') is not None
+
+
+# --- shape floor: content must match the KIND of file it is written to ------
+
+def test_html_document_is_refused_as_a_stylesheet():
+  # run-393b4eee wrote a complete HTML page (81 lines, <!DOCTYPE, <head>, a <title>) into
+  # style.css; no guard and no metric noticed for a whole run cycle
+  hard = HardConstraints.from_config(None)          # a FLOOR: no config needed
+  page = '<!DOCTYPE html>\n<html lang="en">\n<head><title>x</title></head>\n</html>'
+  assert hard.check('style.css', page) is not None
+  assert hard.check('sub/theme.css', '<html><body>x</body></html>') is not None
+
+
+def test_real_css_is_accepted_including_angle_brackets_in_values():
+  # narrow on purpose: CSS legitimately carries '<' inside a content: string, so the test
+  # is for DOCUMENT STRUCTURE, not for angle brackets
+  hard = HardConstraints.from_config(None)
+  assert hard.check('style.css', ':root { --bg: #1a1a1a; }\nbody { color: #eee; }') is None
+  assert hard.check('style.css', '.q::before { content: "<b>"; }') is None
+  assert hard.check('style.css', '/* NutriBowl stylesheet */\nbody { margin: 0; }') is None
+
+
+def test_a_page_without_markup_is_refused():
+  # the inverse mistake: a stylesheet written into a page
+  hard = HardConstraints.from_config(None)
+  assert hard.check('index.html', 'body { color: #eee; }\n.card { padding: 1rem; }') is not None
+  assert hard.check('index.html', '<html><body><h1>hi</h1></body></html>') is None
+
+
+def test_a_php_page_of_pure_php_is_still_a_page():
+  # PAGES includes .php; a file that is only `<?php ... ?>` carries no HTML tag and must
+  # NOT be mistaken for a stylesheet-in-a-page
+  hard = HardConstraints.from_config(None)
+  assert hard.check('inc.php', '<?php echo $title; ?>') is None
+
+
+def test_a_target_that_is_neither_page_nor_stylesheet_has_no_content_policy():
+  # an asset's .license.txt sidecar is not a page; judging it by the markup floor would
+  # refuse perfectly good provenance text
+  hard = HardConstraints(forbidden_colors=['blue'], required_snippets=['assets/logo.svg'])
+  assert hard.check('assets/x.jpg.license.txt', 'license: by 2.0\ncreator: Jane') is None

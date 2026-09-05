@@ -21,10 +21,16 @@ Config (`hard_constraints`, all keys optional):
   required_snippets ["assets/logo.svg"]   must survive an edit of a page that had them
   allow_hotlinking  false                 external <img src="http..."> refused
 
-The first two are opt-in: configure nothing and there is nothing to violate. The third
-is a FLOOR, active even with no config block at all — an image the site does not own is
-a dead link and an unrecorded license, so the default is to refuse it and make the model
-go through `add_asset` instead. Set it true to opt out.
+`forbidden_colors` and `required_snippets` are opt-in: configure nothing and there is
+nothing to violate. The other two rules are FLOORS — they hold with no config block at all:
+
+  shape             content must match the KIND of file it is written to: an HTML document
+                    is never a stylesheet, a page always carries markup. run-393b4eee wrote
+                    a whole HTML page into style.css and every other guard was satisfied,
+                    because nobody was checking the payload's shape.
+  allow_hotlinking  false by default — an image the site does not own is a dead link and an
+                    unrecorded license, so refuse it and make the model go through
+                    `add_asset`. Set it true to opt out.
 """
 from __future__ import annotations
 
@@ -32,9 +38,10 @@ import re
 from pathlib import PurePosixPath
 from typing import Any
 
-# suffixes whose whole content is CSS (mirrors site.STYLES, kept here so policy does not
+# what each suffix IS (mirrors site.STYLES / site.PAGES, kept here so policy does not
 # import the file API — the dependency runs the other way)
 STYLE_SUFFIXES = {".css"}
+PAGE_SUFFIXES = {".html", ".htm", ".php"}
 
 # external image reference in page source; `add_asset` + a relative src is the wanted path
 _EXTERNAL_IMG = re.compile(r"""<img\b[^>]*\bsrc\s*=\s*["'](https?://[^"']+)["']""",
@@ -43,6 +50,13 @@ _EXTERNAL_IMG = re.compile(r"""<img\b[^>]*\bsrc\s*=\s*["'](https?://[^"']+)["']"
 # the CSS regions of a page: <style> blocks and style="" attributes
 _STYLE_BLOCK = re.compile(r"<style\b[^>]*>(.*?)</style>", re.IGNORECASE | re.DOTALL)
 _STYLE_ATTR = re.compile(r"""\bstyle\s*=\s*["']([^"']*)["']""", re.IGNORECASE)
+
+# Shape floor — an HTML DOCUMENT written into a stylesheet. Tests for document structure,
+# never for angle brackets: CSS legitimately carries `<` inside a content: string.
+_HTML_DOC = re.compile(r"^\s*(?:<!DOCTYPE\s+html|<html\b)|</html\s*>", re.IGNORECASE)
+# ...and the inverse: a page with no markup at all. `<?` keeps a pure-PHP page (PAGES
+# includes .php) from being mistaken for a stylesheet written into a page.
+_MARKUP = re.compile(r"<[a-zA-Z!/?]")
 
 
 def _inline_css(page: str) -> list[str]:
@@ -85,12 +99,22 @@ class HardConstraints:
         `forbidden_colors` enforced on `change_design` but skipped when the same stylesheet
         was written through `edit_content` — a hard constraint the model could route around
         by picking the other action, which is exactly what run-9d177565 did."""
-        if PurePosixPath(str(target)).suffix.lower() in STYLE_SUFFIXES:
+        suffix = PurePosixPath(str(target)).suffix.lower()
+        if suffix in STYLE_SUFFIXES:
             return self.check_css(content)
-        return self.check_page(content, previous=previous)
+        if suffix in PAGE_SUFFIXES:
+            return self.check_page(content, previous=previous)
+        # Anything else carries no content policy — `Site.safe_path` already refuses a
+        # target that is neither page nor stylesheet, and treating every unknown suffix as
+        # a page would judge, say, an asset's `.license.txt` sidecar by the markup floor.
+        return None
 
     def check_css(self, css: str) -> str | None:
-        """Forbidden brand colors used as VALUES anywhere in a stylesheet."""
+        """Stylesheet policy: it must BE a stylesheet, and it must not use a brand color
+        the operator excluded."""
+        if _HTML_DOC.search(css):
+            return ("an HTML document was written into a stylesheet - payload.content for a "
+                    ".css target must be CSS (put page source in a .html target instead)")
         hits = [c for c, pattern in self._color_res if pattern.search(css)]
         if hits:
             return f"forbidden color(s) {', '.join(hits)} - the brand constraints exclude them"
@@ -100,6 +124,9 @@ class HardConstraints:
         """Page source policy. `previous` is the file's current content on an overwrite:
         a required snippet only has to survive where it already was, so adding the rule
         later never blocks edits to pages that never carried the logo/nav."""
+        if not _MARKUP.search(page):
+            return ("no markup in a page - payload.content for a page target must be the "
+                    "page source (put a stylesheet in a .css target instead)")
         # A page carries CSS too — in <style> blocks and style="" attributes. Only those
         # regions are checked, never the prose: a nutrition page may write "blue cheese".
         for css in _inline_css(page):

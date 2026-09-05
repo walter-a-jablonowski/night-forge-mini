@@ -14,6 +14,26 @@ $ git show 8f15ea4:style.css | head -3
 
 **Effort: S.** A shape floor in `constraints.py`, next to the existing hotlink floor.
 
+**✅ DONE 2026-09-05.** Implemented as specified below — a floor in `HardConstraints`,
+reached through the `check(target, ...)` suffix router, so all three writes enforce it.
+- `.css`: refused when the payload opens with `<!DOCTYPE html` / `<html` or contains
+  `</html>` — document structure, not angle brackets.
+- pages: refused when the payload contains no markup at all. The pattern accepts `<?`,
+  so a pure-PHP `.php` page (PAGES includes .php) is not mistaken for a stylesheet.
+- Verified against the REAL payload from git (`8f15ea4:style.css`, 82 lines): refused as
+  `.css`, while the repaired stylesheet passes, the same bytes as a PAGE pass (no false
+  positive), and the real CSS written into a page is caught.
+- `check()` now routes by EXPLICIT suffix sets (`STYLE_SUFFIXES` / `PAGE_SUFFIXES`) instead
+  of treating every non-`.css` target as a page. Running the floor over the live site
+  caught this: an asset's `.license.txt` sidecar was being judged by the markup rule.
+  Unreachable through the write actions (`safe_path` refuses such targets), but the
+  default-to-page branch was a trap waiting for the first text asset.
+- 6 tests, written failing first; 120 pass. Re-verified over every file of the live
+  `try/website/` site: all ok, no false positives.
+
+The `styles_ok` metric was NOT built — the refusal prevents the write, which was the point.
+It is split out as its own item: `backlog/styles-ok-metric.md`.
+
 ## Why it matters more than it looks
 - **Nothing refused it.** Not the gate (`edit_content` is allow-listed and git-recoverable),
   not `HardConstraints` — `check_css` only looks for forbidden colors, and this payload had
@@ -55,10 +75,10 @@ Put it in `constraints.py` rather than `Site`: `Site` owns paths and bytes, and 
 statement about acceptable content, which is exactly what that module already decides. It is
 a floor, not an operator setting — there is no sane deployment that wants HTML in its CSS.
 
-## Secondary option (cheaper, weaker)
-A `styles_ok` metric module that scores stylesheets that parse as CSS. It would have made the
-damage *visible* in the metric line, but only after the fact — a refusal prevents the bad
-write, a metric merely reports it. Worth adding as well, not instead.
+## Secondary option (not built — moved to `backlog/styles-ok-metric.md`)
+A `styles_ok` metric module would have made the damage *visible* in the metric line, but only
+after the fact — a refusal prevents the bad write, a metric merely reports it. Worth adding as
+well, not instead, so it survives as its own backlog item.
 
 ## Test
 Table-driven over `create_page` / `edit_content` / `change_design`: an HTML document refused

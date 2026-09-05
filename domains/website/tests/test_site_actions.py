@@ -199,3 +199,21 @@ def test_every_write_enforces_the_css_constraint_on_a_stylesheet( tmp_path ):
 
   assert css.read_text(encoding='utf-8') == 'body { color: white; }'
   assert not (tmp_path / 'site' / 'new.css').exists()
+
+
+def test_no_write_puts_an_html_document_into_a_stylesheet( tmp_path ):
+  """run-393b4eee: edit_content wrote a full HTML page into style.css and every guard was
+  satisfied — the payload's shape was checked by nobody."""
+  site = Site(tmp_path / 'site')
+  css = tmp_path / 'site' / 'style.css'
+  css.parent.mkdir(parents=True, exist_ok=True)
+  css.write_text('body { color: white; }', encoding='utf-8')
+  page = '<!DOCTYPE html><html><head><title>t</title></head><body>x</body></html>'
+
+  for name, target in (('create_page', 'new.css'), ('edit_content', 'style.css'),
+                       ('change_design', 'style.css')):
+    res = getattr(site, name)(target, {'content': page})
+    assert res['status'] == 'error', f'{name} wrote HTML into a stylesheet'
+
+  assert css.read_text(encoding='utf-8') == 'body { color: white; }'
+  assert not (tmp_path / 'site' / 'new.css').exists()
