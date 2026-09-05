@@ -9,7 +9,8 @@ modules, seed site, hard constraints, asset licensing) plus the core tool `image
 96 tests pass: `python -m pytest domains/website/tests blank/tests`.
 
 **Still open:**
-- **(3) connector `search` mode** — the only unbuilt phase, and explicitly build-only-if-needed:
+- **(3) connector `search` mode** — the only unbuilt phase; SPLIT OUT to
+  `backlog/website-connector-search-mode.md`. Build-only-if-needed:
   model-driven `web_search` during analyze already covers discovery. Caution: scheduled
   searches make input effectively infinite, so the `seen_ids` watermark stops bounding runs
   and only the gate does — a goal-reached / convergence stop condition should land first.

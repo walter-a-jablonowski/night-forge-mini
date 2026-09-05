@@ -1,6 +1,7 @@
 # Interactive CLI — persistent REPL console (Claude-Code-style)
 
-**Status: S done (REPL). M (in-session edit prompts + streaming) remains.** Implemented in
+**Status: S done (REPL) — ARCHIVED. The M half (edit-before-approve + streaming) is split
+out to `backlog/run-triggers/interactive-cli-editing.md`.** Implemented in
 `night_forge_mini/cli.py`: `python -m night_forge_mini` (no command) or `... shell` loads the
 engine once and loops on `nfm> ` — commands `run`, `inbox`, `approve <id|n>`, `reject <id|n>`,
 `trace <run_id>`, `help`, `quit`. `approve`/`reject` accept an **inbox index** (`approve 1`) or
@@ -13,8 +14,8 @@ approve/reject UX Claude Code uses for tool calls.
 
 **Why it's a trigger:** typing `run` fires a pass, and the same session is the human-at-the-
 gate. It's the **human-driven, foreground** counterpart to the unattended
-[scheduler-daemon](scheduler-daemon.md) / [filesystem-watch](filesystem-watch.md) /
-[webhook-trigger](webhook-trigger.md).
+[scheduler-daemon](../backlog/run-triggers/scheduler-daemon.md) / [filesystem-watch](../backlog/run-triggers/filesystem-watch.md) /
+[webhook-trigger](../backlog/run-triggers/webhook-trigger.md).
 
 **Why deferred:** v1 ships the minimal one-shot CLI (`run-once`/`inbox`/`approve`/`reject`/
 `trace`). A REPL + in-session approval prompts is polish, not load-bearing.

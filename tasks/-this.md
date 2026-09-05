@@ -71,7 +71,7 @@ The blank system plus pne domain pack is merged in a new folder to get a running
   - allow lists in code (see also diagram)
   - see also backlog below
 
-- [x] Make nice CLI [text](backlog/run-triggers/interactive-cli.md) — DONE (S): interactive REPL (`python -m night_forge_mini` / `shell`); run/inbox/approve/reject/trace, approve by inbox #. M (edit-before-approve + streaming) remains.
+- [x] Make nice CLI [text](v%20done/260621%20-%20interactive-cli.md) — DONE (S): interactive REPL (`python -m night_forge_mini` / `shell`); run/inbox/approve/reject/trace, approve by inbox #. M (edit-before-approve + streaming) remains.
   - [ ] try
 
 
@@ -86,7 +86,7 @@ The blank system plus pne domain pack is merged in a new folder to get a running
 
 by priority, effort in parens (reordered 2026-07-06 after the review changes)
 
-1. website-domain-pack (L, = 0.3.0) — phases 1+2 DONE (2026-07-28); only phase 3 (connector `search` mode) is left, and it is build-only-if-needed. [text](backlog/website-domain-pack.md)
+1. website-domain-pack (L, = 0.3.0) — phases 1+2 DONE (2026-07-28); only phase 3 (connector `search` mode) is left, and it is build-only-if-needed. [text](v%20done/260728%20-%20website-domain-pack.md)
 2. observability (S) — wire one tracer (Langfuse/LangSmith) through the existing LLM wrapper; store is already trace-shaped. MORE urgent since agentic analyze: several model calls per run, and tool_call spans map 1:1 to tracer spans.
 3. cost logging (S, roi-measurement) — per-run token/$ visibility; same reason as observability (run_tools multiplies calls). impact_report now supplies the value side for the later ROI join (L).
 4. data-governance (S first step) — scoped read-only creds per connector. Trigger fires WITH 0.3.0: web-source is the 2nd connector (+ search API key).
@@ -124,7 +124,7 @@ Done
 
 - [x] I guess this currently is a endless running system right? Does it already have any stop mechanism?
 
-- [x] [text](backlog/website-domain-pack.md) — phases 1+2 DONE 2026-07-28. Actions: create_page / add_asset (reversible, auto-run) + edit_content / change_design / remove_page (reversible=false → auto-run only while git is healthy, else held). `change_layout` dropped as redundant with edit_content. New core tool `image_search` (Openverse, keyless). Hard constraints + asset licensing ladder enforced inside the actions. Phase 3 (`search` mode) deferred, build-only-if-needed.
+- [x] [text](v%20done/260728%20-%20website-domain-pack.md) — phases 1+2 DONE 2026-07-28. Actions: create_page / add_asset (reversible, auto-run) + edit_content / change_design / remove_page (reversible=false → auto-run only while git is healthy, else held). `change_layout` dropped as redundant with edit_content. New core tool `image_search` (Openverse, keyless). Hard constraints + asset licensing ladder enforced inside the actions. Phase 3 (`search` mode) deferred, build-only-if-needed.
 
   - [x] See questions in task
   - [x] Check for errors

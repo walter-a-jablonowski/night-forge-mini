@@ -1,6 +1,7 @@
 # Bounded Retrieval — relevant-slice context (finish idea_2's "bounded context")
 
-**Status: S done (keyword slice). M (embeddings) remains.** `idea_2.md` (Running v1 →
+**Status: S done (keyword slice) — ARCHIVED. The M half (embeddings) is split out to
+`backlog/embedding-retrieval.md`, where it is judged likely unnecessary.** `idea_2.md` (Running v1 →
 *Bounded context*) requires: *"Ingest assembles recent N runs + same-domain relevant slice,
 never the full store. History grows; the context window doesn't."* Both halves are now bounded:
 

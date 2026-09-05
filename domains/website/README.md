@@ -3,8 +3,8 @@
 A website under `data/site/` is the materialized artifact; each loop pass captures
 external content and improves the site toward the **goal you set in `config.json`**
 (`site_goal` + optional brand `constraints`) — the pack is the mechanism, the operator
-supplies the objective. Phases 1–2 of `tasks/backlog/website-domain-pack.md`
-(phase 3, scheduled `search` mode, is deferred).
+supplies the objective. Phases 1–2 of `tasks/v done/260728 - website-domain-pack.md`
+(phase 3, scheduled `search` mode, is deferred — `tasks/backlog/website-connector-search-mode.md`).
 
 ## What it does
 - **Connector** `web-source` — `pages` mode: a fixed URL list from config, read via the
