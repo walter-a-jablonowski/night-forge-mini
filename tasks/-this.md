@@ -49,7 +49,13 @@ Next
 - /domains: modular domain packs for use cases
 The blank system plus pne domain pack is merged in a new folder to get a running system.
 
-- [ ] Add Claude Code as AI (if missing)
+- [x] Add Claude Code as AI — explored 2026-09-10, task written:
+  
+  [text](backlog/claude-code-backend.md). NOT a 4th `providers{}` entry — the CLI is an
+  agent that runs the tool loop itself, so it needs a backend SEAM plus an MCP bridge over
+  `tools/registry.py`. Refs: grid-view `lib/ai/claude.php` + `mcp/grid_mcp.php`,
+  dev-commander `lib/agents/base.py`. Covers the provider/agent clean-up too — the
+  `model.fake` branches in every pack are the current smell.
 
 - [ ] First page that the model could simple healthy nutrition
   - Ingredients
@@ -58,7 +64,7 @@ The blank system plus pne domain pack is merged in a new folder to get a running
     - good combinations of ingredients (nutrients) per meal
     - cheap (only if possible, price is lower priority)
 
-- [ ] tool-registry.md done ?
+- [x] tool-registry.md done ?
 - [ ] Verify
 
   What is missing before a daemon would be safe
