@@ -56,6 +56,11 @@ The blank system plus pne domain pack is merged in a new folder to get a running
   `tools/registry.py`. Refs: grid-view `lib/ai/claude.php` + `mcp/grid_mcp.php`,
   dev-commander `lib/agents/base.py`. Covers the provider/agent clean-up too — the
   `model.fake` branches in every pack are the current smell.
+  - [x] both open questions decided 2026-09-10 (per-ROLE backend: analyze=Claude Code,
+    judge=cheap http; fresh CLI session per run — the cross-run cacheable prefix is only
+    ~856 tokens, and within-run caching is the CLI's own)
+  - [ ] [text](backlog/analyze-context-amplification.md) — one pass resends its context
+    4-6x (measured: 28.7k chars of content sent as 166k); found while costing the above
 
 - [ ] First page that the model could simple healthy nutrition
   - Ingredients

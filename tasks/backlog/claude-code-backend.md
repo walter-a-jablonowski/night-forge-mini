@@ -52,7 +52,7 @@ Verified in grid-view against CLI 2.1.239:
 | `--allowedTools <names>` | explicit permission. `--permission-mode bypassPermissions` is refused by the local policy classifier and grants more than wanted |
 | `--mcp-config <json>` + `--strict-mcp-config` | pass the server inline; **forward slashes only** — a Windows path puts `\x` in the JSON, which is not a valid escape, so it is silently treated as a *filename* and the CLI stops with "file not found" |
 | prompt on **stdin** | Windows command lines are length-limited; a long prompt would be truncated |
-| `--resume <sessionId>` | continues the CLI-side conversation (probably not wanted here — see Open questions) |
+| `--resume <sessionId>` | continues the CLI-side conversation — **decided against**, see Decisions below |
 
 Process handling (all learned the hard way in grid-view):
 - **stderr to a file, not a pipe** — with two pipes to drain, the one you are not reading
@@ -94,26 +94,48 @@ The seam is the real work, and it is overdue independently of Claude Code:
   `"backend": "claudeCode"`, `{ "bin": "", "model": "opus", "timeout": 300 }` — rather than
   forcing it into `providers{}` beside `base_url`/`api_key_env`.
 
-## Open questions
-- **Resume or not.** grid-view resumes the CLI session between turns because it is a
-  conversation. Our loop is one pass per run with history rebuilt from the JSONL log, so a
-  fresh session each run is probably right — but that forfeits prompt caching.
-- **Which calls go to it.** `goal_coverage` is one judge call per run; spending a
-  subscription turn on it is wasteful. Per-role backends (a cheap API model for judge
-  metrics, Claude Code for analyze) may be the honest answer — decide before building, it
-  changes the seam.
-- **No `response_format`.** The CLI has no structured-output parameter, so the proposal comes
-  back as text. Our tolerant `_extract_json` + the bounded JSON retry
-  (`tasks/v done/260904 - llm-json-retry.md`) already cover exactly this, and the retry
-  logged 2 saves in one live run — so this is likely fine, but it must be verified rather
-  than assumed.
-- **Rate/usage limits.** A subscription has session limits rather than per-token billing;
-  a daemon looping every few minutes could exhaust them. Pairs with the stop condition in
-  `run-when-metric-below-target.md`.
-- **`--tools ""` vs our design.** grid-view disables the built-ins because its agent must not
-  touch the disk. Our website pack's artifact *is* files — but they must still be written
-  through our actions (gate, git commit, hard constraints), never by the agent directly. So
-  the built-ins stay off here too.
+## Decisions (2026-09-10, measured on the live runs)
+
+Both open questions are resolved. The measurements behind them are in
+`backlog/analyze-context-amplification.md`; the short version is that the cross-run cacheable
+prefix is **~856 tokens**, so caching arguments do not decide anything here.
+
+**Backend per ROLE, not per deploy.** Two roles, and resist a general router:
+- `analyze` -> Claude Code (the expensive, agentic, judgment-heavy call),
+- `judge` -> the cheap HTTP provider. `goal_coverage` is one small call returning a number
+  0-10, with no tools; a CLI turn cannot amortise its process spawn + MCP handshake over
+  that. It would also not fix that metric's real problem — the judge scored the *same* site
+  8.0, then 5.0, then 10.0 across three runs. That is variance, not a weak model.
+
+So `Engine` holds a small role->backend map, and a pack asks for the role it needs. This is
+the one decision that changes the seam, which is why it is settled before building.
+
+**Fresh CLI session per run — no `--resume`.**
+- Our `history` is already curated and bounded (recent findings, metric trend, rejections,
+  failures, predicted-vs-actual). Resuming would double it: the CLI holding the raw
+  conversation *and* us injecting our summary of it.
+- Determinism — "the JSONL log is the source of truth" is the project's premise. A run must
+  see the same context regardless of what some earlier CLI session did.
+- One less failure mode: no session id to persist, expire, or go stale.
+- It costs almost nothing. Only the system prompt (~856 tokens) is stable between runs; the
+  site map, the snippet and the history block all change by design, and the minimum cacheable
+  prefix is 512-4096 tokens depending on model. **Within-run** caching — where the real 4-6x
+  resend amplification lives — is handled by the CLI itself inside its own session, free.
+
+**What it costs.** On a subscription there is no per-token charge; the currency is session
+usage limits (do not quote figures here, they change). A pass is ~44k input + ~7k output
+tokens — a modest turn. The exposure is an unattended daemon looping every few minutes, which
+is why the stop condition in `run-when-metric-below-target.md` must land before
+`scheduler-daemon`, not after. For scale, the same passes at API rates would be ~$0.33/run on
+Opus 5 and ~$0.13 on Sonnet 5 (~$239 vs ~$96 a month at 24 runs/day) — that gap is the reason
+this task exists.
+
+**Still to verify while building** (not blockers, but do not assume):
+- the CLI has no `response_format`, so the proposal comes back as text. Our tolerant
+  `_extract_json` + bounded JSON retry already cover exactly this and logged 2 saves in one
+  live run — verify it holds for a full proposal payload rather than trusting it.
+- `--tools ""` is right for us too: the website pack's artifact IS files, but they must be
+  written through our actions (gate, hard constraints, git commit), never by the agent.
 
 ## Pairs with
 `observability.md` (a stream-json turn is already a trace, and the seam is the one call site),
