@@ -164,10 +164,17 @@ class HttpBackend:
         try:
             tool = usable.get(name)
             if tool is None:
-                # Name what IS callable: models otherwise retry the same phantom name, or
-                # give up on the work entirely (a pack's ACTION names are the usual mixup).
+                # Name what IS callable, AND where the name probably belongs. A pack's
+                # ACTION names are the usual mixup, and listing the tools alone does not
+                # fix it: measured over two passes of a fresh deploy, 13 of 42 calls were
+                # action names (`add_asset` ten times) and the run ended with 20 image
+                # searches and no images — the model abandoned the work rather than
+                # re-routing it. Saying where it goes is what makes the error actionable.
                 raise LLMError(f"unknown tool {name}; callable tools are: "
-                               f"{', '.join(sorted(usable)) or '(none)'}")
+                               f"{', '.join(sorted(usable)) or '(none)'}. "
+                               f"If {name} is one of the ACTIONS you may propose, it is not "
+                               "callable — put it in the actions array of your final answer "
+                               "instead.")
             result, status = str(tool.run(**args)), "ok"
         except Exception as e:  # noqa: BLE001 - the model gets the reason and may retry
             result, status = f"error: {type(e).__name__}: {e}", "error"

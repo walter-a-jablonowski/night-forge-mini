@@ -15,8 +15,15 @@ discovery for now.
 from __future__ import annotations
 
 import hashlib
+import re
 
 from night_forge_mini.tools.read_url import read_url as _read_url
+
+# Jina puts its own header before the page; the page itself follows this marker.
+_BODY_MARKER = "Markdown Content:"
+# a line that is only a markdown link (optionally as a bullet) — menu, not content
+_LINK_LINE = re.compile(r'^[\s*\-]*(?:\[[^\]]*\]\([^)]*\)[\s,.*\-]*)+$')
+_MIN_PROSE = 60          # chars of non-link text before a line counts as the article
 
 
 class WebSourceConnector:
@@ -33,11 +40,38 @@ class WebSourceConnector:
                 text = _read_url(url).strip()
             except Exception:  # noqa: BLE001 - skip this run, retry next run
                 continue
+            text = _strip_nav(text)
             sid = f"{url}#{_hash(text)}"
             if sid in seen_ids:
                 continue
             out.append({"id": sid, "text": text[: self.snippet_max], "source": url})
         return out
+
+
+def _strip_nav(md: str) -> str:
+    """Drop the site furniture in front of the article.
+
+    Capture is bounded, and the bound is spent from the START of what the reader returns.
+    Measured live: Wikipedia's article text began at char 6,140 while `snippet_max` was
+    4,000, so three captured pages handed the model nothing but menus — and because the
+    watermark then marked those urls seen, their content could never be ingested at all.
+    A bounded snippet is only useful if the bound is spent on content.
+
+    Deliberately conservative: when nothing in the page looks like prose, the text is
+    returned unchanged. An empty snippet would be worse than a menu."""
+    head, _, body = md.partition(_BODY_MARKER)
+    if not body:
+        head, body = "", md
+
+    lines = body.splitlines()
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped or _LINK_LINE.match(stripped):
+            continue
+        # a line is the article once enough of it survives having its links removed
+        if len(re.sub(r'\[[^\]]*\]\([^)]*\)', '', stripped)) >= _MIN_PROSE:
+            return "\n".join(lines[i:]).strip()
+    return md.strip()
 
 
 def _hash(text: str) -> str:

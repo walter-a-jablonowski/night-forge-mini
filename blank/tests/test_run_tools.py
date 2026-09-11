@@ -75,6 +75,22 @@ def test_unknown_tool_and_crashing_tool_become_error_results():
   assert all(s['status'] == 'error' for s in w.take_tool_trace())
 
 
+def test_unknown_tool_error_says_an_action_is_not_callable():
+  """Measured on a fresh deploy: 13 of 42 tool calls in two passes were ACTION names —
+  `add_asset` alone 10 times — and the site ended with 20 image searches and no images.
+  Naming the callable tools is not enough; the model needs telling where the name DOES
+  belong, or it abandons the work instead of re-routing it."""
+  w, calls = make_wrapper([
+    response(tool_calls=[tool_call('add_asset', '{}', 'a')]),
+    response(content=REPLY),
+  ])
+  w.run_tools('sys', 'usr', tools=[read_tool(lambda id='': 'body')], schema=SCHEMA)
+
+  result = [m['content'] for m in calls[1]['messages'] if m.get('role') == 'tool'][0]
+  assert 'actions array' in result          # where it should have gone
+  assert 'final answer' in result
+
+
 def test_unknown_tool_error_names_the_callable_tools():
   """A model that invents a tool name (a pack's ACTION names are the usual mixup) must be
   told what it CAN call, or it retries the phantom name and abandons the work."""
