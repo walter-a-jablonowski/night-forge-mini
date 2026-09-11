@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from typing import Any
@@ -40,7 +41,7 @@ class ClaudeCodeBackend:
     fake = False
 
     def __init__(self, cfg, one_shot=None, runner=None):
-        block = cfg.get("claudeCode") or {}
+        self._block = block = cfg.get("claudeCode") or {}
         self.deploy = str(getattr(cfg, "root", "") or os.getcwd())
         self.bin = str(block.get("bin") or "claude")
         self.model = str(block.get("model") or "")
@@ -48,6 +49,7 @@ class ClaudeCodeBackend:
         self._one_shot = one_shot            # the cheap backend for judge-style calls
         self._run = runner or _run_cli       # injectable so the parser is testable
         self._tool_trace: list[dict] = []
+        self._server_cmd = ""              # resolved per turn; named in the refusal
 
     # -- the two roles ---------------------------------------------------------
 
@@ -70,7 +72,8 @@ class ClaudeCodeBackend:
         if not turn["connected"]:
             raise LLMError(
                 "the Claude Code turn had no tools: our MCP server did not report as "
-                "connected, so nothing in an answer would come from this deploy. "
+                "connected, so nothing in an answer would come from this deploy. The tool "
+                f"server starts as: {self._server_cmd} "
                 f"(exit {code}){' - ' + err.strip()[:300] if err.strip() else ''}")
         if turn["text"] == "":
             raise LLMError(f"the Claude Code CLI returned nothing (exit {code})"
@@ -130,11 +133,38 @@ class ClaudeCodeBackend:
         in the JSON, which is not a valid escape — the CLI then reads the argument as a
         FILE NAME and stops with "file not found"."""
         deploy = self.deploy.replace("\\", "/")
+        python = self._python_bin()
+        self._server_cmd = f"{python} -m night_forge_mini.mcp_server {deploy}"
         return json.dumps({"mcpServers": {MCP_NAME: {
-            "command": sys.executable.replace("\\", "/"),
+            "command": python,
             "args": ["-m", "night_forge_mini.mcp_server", deploy],
             "env": {"PYTHONPATH": deploy},
         }}}, ensure_ascii=False)
+
+    def _python_bin(self) -> str:
+        """The interpreter that runs our tool server.
+
+        `sys.executable` is NOT automatically it. grid-view lost a day to this exact shape
+        in PHP: the tool server was started with `PHP_BINARY`, which under mod_php is the
+        APACHE binary, so the server never came up — and the agent, left with no tools,
+        answered from a board it invented, tabs and ticket numbers included. Once this
+        engine is embedded (mod_wsgi, a frozen exe — see run-triggers/library-embed.md)
+        `sys.executable` is the host binary in exactly the same way, and in some embedded
+        contexts it is empty. So it is trusted only when it looks like an interpreter."""
+        configured = str(self._block.get("pythonBin") or "").strip()
+        if configured:
+            return configured.replace("\\", "/")
+
+        exe = sys.executable or ""
+        if exe and "python" in os.path.basename(exe).lower():
+            return exe.replace("\\", "/")
+
+        found = shutil.which("python") or shutil.which("python3")
+        if found:
+            return found.replace("\\", "/")
+        raise LLMError("cannot find the python interpreter that runs the tool server "
+                       f"(sys.executable is {exe or 'empty'!r}, which is not one) — set "
+                       "claudeCode.pythonBin in config.json")
 
     # -- the answer ------------------------------------------------------------
 

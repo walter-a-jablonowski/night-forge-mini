@@ -198,3 +198,36 @@ def test_a_turn_with_no_usable_tools_is_refused_before_it_starts( tmp_path ):
       b.run_tools('sys', 'usr', tools=offered)
     assert 'no usable tools' in str(e.value)
   assert b.last_cmd is None                            # the CLI was never started
+
+
+# --- the interpreter that runs our tool server -----------------------------
+
+def test_python_bin_falls_back_when_sys_executable_is_not_an_interpreter( tmp_path, monkeypatch ):
+  """grid-view's incident in our language: they launched the tool server with PHP_BINARY,
+  which under mod_php is the APACHE binary, so the server never came up — and the agent
+  then answered from an invented board. `sys.executable` is the same trap once the engine
+  is embedded (mod_wsgi, a frozen exe) or when it is empty."""
+  import night_forge_mini.backends.claude_code as cc
+
+  monkeypatch.setattr(cc.sys, 'executable', 'C:/xampp/apache/bin/httpd.exe')
+  b = backend(tmp_path, stream(init(), final(PROPOSAL)))
+  b.run_tools('sys', 'usr', tools=[read_tool()])
+  command = json.loads(b.last_cmd[b.last_cmd.index('--mcp-config') + 1])['mcpServers'][MCP_NAME]['command']
+  assert 'httpd' not in command and 'python' in command.lower()
+
+
+def test_configured_python_bin_wins( tmp_path ):
+  b = backend(tmp_path, stream(init(), final(PROPOSAL)), pythonBin='D:/py/python.exe')
+  b.run_tools('sys', 'usr', tools=[read_tool()])
+  command = json.loads(b.last_cmd[b.last_cmd.index('--mcp-config') + 1])['mcpServers'][MCP_NAME]['command']
+  assert command == 'D:/py/python.exe'
+
+
+def test_a_turn_without_tools_names_the_command_it_tried( tmp_path ):
+  """The refusal must point at the CAUSE. grid-view's version says which binary starts the
+  tool server, because 'the server did not connect' alone sent them looking in the wrong
+  place for the real problem."""
+  b = backend(tmp_path, stream(init(connected=False), final(PROPOSAL)))
+  with pytest.raises(LLMError) as e:
+    b.run_tools('sys', 'usr', tools=[read_tool()])
+  assert 'night_forge_mini.mcp_server' in str(e.value)     # what it tried to start
