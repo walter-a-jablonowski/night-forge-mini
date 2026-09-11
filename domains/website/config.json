@@ -64,6 +64,8 @@
   "site_map_max": 50,
   "_analyze_tool_steps_comment": "agentic analyze: max tool calls (read_page/read_url/web_search) per run; 0 = one-shot",
   "analyze_tool_steps": 8,
+  "_analyze_result_budget_comment": "agentic analyze: total chars of tool RESULTS one pass may pull in (one result is additionally capped). Every step resends the whole conversation, so a big read is paid for again on each later step - measured 4-6x on this deploy. Lower it for a small-context model.",
+  "analyze_result_budget": 40000,
 
   "_git_comment": "Git versioning of the site — REQUIRED for autonomy: edit_content, change_design and remove_page are honestly reversible=false, so the gate only auto-runs them while git makes them recoverable (enabled + per_action + repo healthy/clean). PRE-INITIALIZE: `git init` inside data/site, commit the seed. Set remote to also push (e.g. to a hosting repo); empty = local-only. If git is unavailable/dirty, those actions safely HOLD for approval instead.",
   "git": {

@@ -158,3 +158,44 @@ def test_json_retries_are_visible_in_the_trace():
   assert w.complete_json('sys', 'usr', schema=SCHEMA) == {'finding': 'f', 'actions': []}
   spans = [s for s in w.take_tool_trace() if s['tool'] == 'json_retry']
   assert len(spans) == 1 and spans[0]['status'] == 'error'
+
+
+# --- per-pass result hygiene (analyze-context-amplification.md) -------------
+
+def test_identical_tool_call_is_answered_from_the_pass_cache():
+  """run-a257a9c6 read style.css twice; the body was then re-sent on every later step.
+  Analyze tools are read-only and nothing writes during a pass, so a repeat is redundant."""
+  ran = []
+  w, calls = make_wrapper([
+    response(tool_calls=[tool_call('read_entry', '{"id": "a"}', 'c1')]),
+    response(tool_calls=[tool_call('read_entry', '{"id": "a"}', 'c2')]),
+    response(content=REPLY),
+  ])
+  w.run_tools('sys', 'usr', tools=[read_tool(lambda id='': ran.append(id) or 'BODY ' * 20)],
+              schema=SCHEMA)
+
+  assert len(ran) == 1                                # the tool itself ran once
+  results = [m['content'] for m in calls[-1]['messages'] if m.get('role') == 'tool']
+  assert 'BODY' in results[0]
+  assert 'already' in results[1].lower()              # the repeat gets a pointer, not the body
+  spans = w.take_tool_trace()
+  assert len(spans) == 2 and spans[1].get('cached') is True
+
+
+def test_tool_results_are_bounded_by_a_total_budget():
+  """`result_cap` bounds one result; nothing bounded the SUM, which is what eventually
+  stops a pass from fitting."""
+  w, calls = make_wrapper([
+    response(tool_calls=[tool_call('read_entry', '{"id": "a"}', 'c1')]),
+    response(tool_calls=[tool_call('read_entry', '{"id": "b"}', 'c2')]),
+    response(content=REPLY),
+  ])
+  w.run_tools('sys', 'usr', tools=[read_tool(lambda id='': 'X' * 80)], schema=SCHEMA,
+              result_budget=100)
+
+  results = [m['content'] for m in calls[-1]['messages'] if m.get('role') == 'tool']
+  assert len(results[0]) == 80                        # fits
+  assert len(results[1]) < 80 and 'trimmed' in results[1].lower()
+  # the LOG keeps the honest size even when the prompt got less
+  spans = w.take_tool_trace()
+  assert spans[1]['chars'] == 80 and spans[1]['sent'] < 80

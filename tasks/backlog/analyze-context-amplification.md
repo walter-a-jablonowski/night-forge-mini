@@ -5,6 +5,32 @@ whole conversation so far, so the content that actually enters a pass is billed 
 
 **Effort: S-M.** A `run_tools` change in `llm.py`; no pack change.
 
+**Levers 2 + 3 DONE 2026-09-11** (`_ToolBudget` in `llm.py`, 2 tests, 122 pass):
+- a repeated identical `(tool, args)` call in one pass returns a pointer to the earlier
+  result instead of the body. Safe because these tools are read-only and nothing writes
+  during a pass, so the answer cannot have changed.
+- the SUM of results is now bounded (`analyze_result_budget`, default 40,000 chars,
+  config-tunable per deploy); a trimmed result SAYS it was trimmed, so the model does not
+  mistake a cut file for a short one.
+- the `tool_call` span keeps the honest full size in `chars` and records what actually
+  went into the prompt as `sent` — a trimmed prompt must not become a trimmed record.
+
+**Measured effect on the three real runs: 6%, 0%, 0%.** Both are guardrails, not the fix:
+no observed pass reached the 40k budget, and only one had a duplicate call. They stop the
+problem getting worse as the site grows; they do not make it better today. Said plainly
+because the numbers below invite the opposite reading.
+
+**Lever 1 is where the reduction actually is — still open.** Simulated against the same
+runs, replacing a result older than 2 steps with a placeholder:
+
+| run | today | with lever 1 | saved |
+|---|---|---|---|
+| run-b1e9637c | 94,112 | 75,257 | 20.0% |
+| run-393b4eee | 128,587 | 90,528 | 29.6% |
+| run-a257a9c6 | 166,207 | 107,178 | **35.5%** |
+
+and it grows with the pass length, which is the direction this is heading.
+
 ## The measurement
 `BASE` = the system prompt + rendered user context for one pass = **8,160 chars**
 (3,252 system + 4,908 site map / snippet / history). Tool-result sizes come from the
@@ -35,15 +61,15 @@ Claude Code and the Anthropic API both cache within a session, so the resends ar
   `site_map_max` bounds the map but nothing bounds the accumulated tool results.
 
 ## Levers, cheapest first
-1. **Drop stale tool results from the resent history.** After the model has read a file and
+1. **Drop stale tool results from the resent history.** — OPEN, the real win (see above). After the model has read a file and
    moved on, the full body no longer earns its place in every later request — replace it with
    a one-line placeholder (`[read_page index.html — 3,370 chars, superseded]`). This is what
    the Anthropic API exposes as context editing (`clear_tool_uses`), and the same idea works
    by hand for any provider, because we own the message list in `run_tools`.
-2. **Cap a single result.** `result_cap` defaults to 16,000 chars *per result* and nothing
+2. ✅ **Cap a single result.** `result_cap` defaults to 16,000 chars *per result* and nothing
    caps the total. A whole-file read is the point of `read_page`, so cap the sum instead of
    the item, and tell the model when it was trimmed.
-3. **Refuse a repeated identical call.** run-a257a9c6 read `style.css` twice (3,387 chars,
+3. ✅ **Refuse a repeated identical call.** run-a257a9c6 read `style.css` twice (3,387 chars,
    billed on every later resend). One cache per run keyed on `(tool, args)` returning
    "already read above" is a few lines in `_run_tool` — modest on its own, but free.
 

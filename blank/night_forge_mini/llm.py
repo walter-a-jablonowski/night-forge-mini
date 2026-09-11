@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from dataclasses import dataclass, field
 from typing import Any
 
 from .records import now_iso
@@ -38,6 +39,31 @@ _JSON_FIX = ("Your previous reply was not valid JSON ({error}). Send the SAME pr
 
 class LLMError(RuntimeError):
     pass
+
+
+@dataclass
+class _ToolBudget:
+    """One agentic pass's result budget. `cap` bounds a single result, `remaining` the sum
+    of all of them; `seen` maps an already-answered call to the size it returned.
+
+    Both exist because a result is not paid for once: every later step resends the whole
+    conversation, so one big read is billed again on each of them (measured 4-6x). The sum
+    is also what decides whether a long pass still fits in the window at all."""
+    cap: int
+    remaining: int
+    seen: dict[tuple[str, str], int] = field(default_factory=dict)
+
+    def take(self, result: str) -> str:
+        """What of `result` may go into the prompt — trimmed, and SAID to be trimmed, so
+        the model knows it is looking at part of a file rather than a short one."""
+        allowed = min(self.cap, max(self.remaining, 0))
+        if len(result) <= allowed:
+            self.remaining -= len(result)
+            return result
+        dropped = len(result) - allowed
+        note = f"\n… trimmed: {dropped:,} more characters (per-pass result budget reached)"
+        self.remaining -= allowed
+        return result[:max(allowed - len(note), 0)] + note
 
 
 class ModelWrapper:
@@ -57,13 +83,20 @@ class ModelWrapper:
     # The agentic call site: a bounded READ-ONLY tool loop ending in the same JSON proposal.
     def run_tools(self, system: str, user: str, tools: list[Tool],
                   schema: dict | None = None, max_steps: int = 6,
-                  result_cap: int = 16_000) -> dict[str, Any]:
+                  result_cap: int = 16_000,
+                  result_budget: int = 40_000) -> dict[str, Any]:
         if self.fake:
             raise LLMError("run_tools called in fake mode; analyzer should branch earlier")
         usable = {t.name: t for t in tools if t.available()}
         messages = _messages(system, user)
         if not usable:  # nothing to offer (e.g. keys missing) -> plain structured call
             return self._request_json(messages, schema)
+
+        # Per-pass result hygiene. Every step resends the whole conversation, so a tool
+        # result is not paid for once but once per remaining step — measured at 4-6x on the
+        # website deploy. `result_cap` bounds one result; this bounds the SUM, which is what
+        # decides whether a long pass still fits at all.
+        budget = _ToolBudget(cap=result_cap, remaining=result_budget)
 
         client = self._ensure_client()
         defs = [{"type": "function",
@@ -93,7 +126,7 @@ class ModelWrapper:
                                             for tc in calls]})
             for tc in calls:
                 messages.append({"role": "tool", "tool_call_id": tc.id,
-                                 "content": self._run_tool(usable, tc, result_cap)})
+                                 "content": self._run_tool(usable, tc, budget)})
 
         # Step budget exhausted while still calling tools: force the proposal, no tools.
         messages.append({"role": "user",
@@ -105,7 +138,7 @@ class ModelWrapper:
         trace, self._tool_trace = self._tool_trace, []
         return trace
 
-    def _run_tool(self, usable: dict[str, Tool], tc, cap: int) -> str:
+    def _run_tool(self, usable: dict[str, Tool], tc, budget: "_ToolBudget") -> str:
         """Run one requested tool; any failure becomes an error STRING the model sees
         (and can react to), never an exception that kills the run. Each call is traced."""
         name = tc.function.name
@@ -116,6 +149,19 @@ class ModelWrapper:
             args = {}
         if not isinstance(args, dict):
             args = {}
+
+        # The model asked for something it already has. The tools in this loop are
+        # READ-ONLY and nothing writes during a pass, so the answer cannot have changed —
+        # re-sending the body would only pay for it again on every remaining step.
+        key = (name, json.dumps(args, sort_keys=True))
+        if key in budget.seen:
+            note = (f"(already read above in this pass — see the earlier {name} result; "
+                    "it has not changed)")
+            self._tool_trace.append({"tool": name, "args": args, "status": "ok",
+                                     "chars": budget.seen[key], "sent": len(note),
+                                     "cached": True, "start": start, "end": now_iso()})
+            return note
+
         try:
             tool = usable.get(name)
             if tool is None:
@@ -126,13 +172,20 @@ class ModelWrapper:
             result, status = str(tool.run(**args)), "ok"
         except Exception as e:  # noqa: BLE001 - the model gets the reason and may retry
             result, status = f"error: {type(e).__name__}: {e}", "error"
-        result = result[:cap]
-        span = {"tool": name, "args": args, "status": status, "chars": len(result),
+        full = len(result)
+        sent = budget.take(result)
+        # `chars` stays the HONEST size: the prompt may have got less, but the trace is the
+        # audit trail of what the tool actually returned, and must not shrink with it.
+        span = {"tool": name, "args": args, "status": status, "chars": full,
                 "start": start, "end": now_iso()}
+        if len(sent) != full:
+            span["sent"] = len(sent)
         if status == "error":
             span["detail"] = result[:200]
         self._tool_trace.append(span)
-        return result
+        if status == "ok":
+            budget.seen[(name, json.dumps(args, sort_keys=True))] = full
+        return sent
 
     def _request_json(self, messages: list[dict], schema: dict | None) -> dict[str, Any]:
         """A completion that must yield JSON — native `response_format: json_schema` when

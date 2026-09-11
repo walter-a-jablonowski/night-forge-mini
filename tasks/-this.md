@@ -50,6 +50,8 @@ Next
 The blank system plus pne domain pack is merged in a new folder to get a running system.
 
 - [x] Add Claude Code as AI — explored 2026-09-10, task written:
+
+  We have 40% left in the current 5 hour rate limit window. Do you think that is enough for adding the Claude Code integration?
   
   [text](backlog/claude-code-backend.md). NOT a 4th `providers{}` entry — the CLI is an
   agent that runs the tool loop itself, so it needs a backend SEAM plus an MCP bridge over

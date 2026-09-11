@@ -20,7 +20,7 @@ class RecordingModel:
     self.user = ''
     self.offered = []
 
-  def run_tools( self, system, user, *, tools, schema, max_steps ):
+  def run_tools( self, system, user, *, tools, schema, max_steps, result_budget=0 ):
     self.system, self.user, self.offered = system, user, [t.name for t in tools]
     return {'finding': 'recorded', 'actions': []}
 

@@ -48,12 +48,15 @@ def build_pack(cfg: Config) -> Pack:
     metric_mods = metrics_mod.load(list(cfg.get("metrics", DEFAULT_METRICS)))
     map_max = int(cfg.get("site_map_max", 50))    # bound the site map fed to the model
     tool_steps = int(cfg.get("analyze_tool_steps", 8))  # agentic read budget; 0 = one-shot
+    # total chars of tool RESULTS one pass may pull in. Every step resends the whole
+    # conversation, so a big read is paid for again on each later step.
+    result_budget = int(cfg.get("analyze_result_budget", 40_000))
 
     def analyze(model, *, goal, snippets, history):
         return analyze_mod.analyze(model, site=site, goal=goal, constraints=constraints,
                                    snippets=snippets, history=history,
                                    metric_mods=metric_mods, map_max=map_max,
-                                   tool_steps=tool_steps)
+                                   tool_steps=tool_steps, result_budget=result_budget)
 
     def pending_work() -> str | None:
         """Unfinished business the SITE itself carries, so a pass can happen with no new

@@ -64,7 +64,7 @@ metric keys: {metric_keys}. Past predicted-vs-actual results are shown - calibra
 
 def analyze(model, *, site: Site, goal: str, constraints: str, snippets: list[dict],
             history: dict[str, list], metric_mods: list, map_max: int = 50,
-            tool_steps: int = 8) -> dict[str, Any]:
+            tool_steps: int = 8, result_budget: int = 40_000) -> dict[str, Any]:
     site_map = site.site_map()
 
     if model.fake:
@@ -83,7 +83,7 @@ def analyze(model, *, site: Site, goal: str, constraints: str, snippets: list[di
                                metric_keys=", ".join(metrics_mod.keys(metric_mods)) or "(none)")
         if tool_steps > 0:  # agentic: model may read pages/sources before proposing
             result = model.run_tools(system, user, tools=tools, schema=SCHEMA,
-                                     max_steps=tool_steps)
+                                     max_steps=tool_steps, result_budget=result_budget)
         else:               # tool_steps 0 = one-shot mode
             result = model.complete_json(system, user, schema=SCHEMA)
         actions = result.get("actions")  # raw model output — the core sanitizes it
