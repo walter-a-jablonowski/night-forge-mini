@@ -1,11 +1,11 @@
-"""One thin client wrapper around the model call (idea_2 seam).
+"""The OpenAI-compatible HTTP backend — the one every configured provider uses.
 
-Provider-agnostic: OpenRouter (default), Gemini, and Ollama all speak the
-OpenAI-compatible chat API, so a single client switches by base_url + key + model.
-This is also where a Langfuse/OTel callback would later be added — one call site.
+Provider-agnostic: OpenRouter (default), Gemini, and Ollama all speak the same chat API,
+so a single client switches by base_url + key + model. This is also where a Langfuse/OTel
+callback would later be added — one call site.
 
-`--fake-llm` skips the network entirely and returns a deterministic proposal, so the
-whole loop runs and is testable with no key and no token spend.
+One of several backends behind `base.Backend`; `--fake-llm` and the Claude Code CLI are
+siblings, not flags on this one.
 
 Structured output: pass a JSON schema (see `pack.proposal_schema`) and it is sent as
 `response_format: json_schema` so the provider constrains the output natively. If a
@@ -26,8 +26,9 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from .records import now_iso
-from .tools.registry import Tool
+from ..records import now_iso
+from ..tools.registry import Tool
+from .base import LLMError
 
 
 JSON_ATTEMPTS = 3    # one call plus two retries when the reply will not parse
@@ -36,9 +37,6 @@ _JSON_FIX = ("Your previous reply was not valid JSON ({error}). Send the SAME pr
              "again as STRICT JSON only - no prose, no code fences, no trailing commas, "
              "and escape every quote and newline inside string values.")
 
-
-class LLMError(RuntimeError):
-    pass
 
 
 @dataclass
@@ -66,7 +64,11 @@ class _ToolBudget:
         return result[:max(allowed - len(note), 0)] + note
 
 
-class ModelWrapper:
+class HttpBackend:
+    """`base.Backend` over an OpenAI-compatible chat endpoint. The agentic loop is driven
+    HERE — this backend calls the model, runs the tool it asked for, and feeds the result
+    back; a backend that is itself an agent does the opposite."""
+
     def __init__(self, provider: dict[str, Any], fake: bool = False):
         self.provider = provider
         self.fake = fake

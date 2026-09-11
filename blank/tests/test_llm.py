@@ -1,9 +1,10 @@
-"""ModelWrapper: native structured output with graceful fallback per provider."""
+"""HttpBackend: native structured output with graceful fallback per provider."""
 from types import SimpleNamespace
 
 import pytest
 
-from night_forge_mini.llm import LLMError, ModelWrapper, _extract_json
+from night_forge_mini.backends import LLMError
+from night_forge_mini.backends.http import HttpBackend, _extract_json
 from night_forge_mini.pack import proposal_schema
 
 PROVIDER = {'name': 'p', 'model': 'm', 'base_url': 'http://localhost', 'api_key_env': 'K'}
@@ -15,14 +16,14 @@ class ParamRejected(Exception):
 
 
 def make_wrapper( handler ):
-  """ModelWrapper with a stub client; handler(kwargs) -> content str or raises."""
+  """HttpBackend with a stub client; handler(kwargs) -> content str or raises."""
   calls = []
 
   def create( **kw ):
     calls.append(kw)
     return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=handler(kw)))])
 
-  w = ModelWrapper(PROVIDER)
+  w = HttpBackend(PROVIDER)
   w._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
   return w, calls
 
@@ -86,11 +87,11 @@ def test_extract_json_still_tolerates_fenced_prose():
 
 
 def test_client_timeout_and_retries_are_bounded_and_configurable():
-  c = ModelWrapper(PROVIDER)._ensure_client()
+  c = HttpBackend(PROVIDER)._ensure_client()
   assert c.timeout == 120.0 and c.max_retries == 2    # sane defaults, not the SDK's 600s
 
   tuned = dict(PROVIDER, timeout=5, max_retries=0)
-  c = ModelWrapper(tuned)._ensure_client()
+  c = HttpBackend(tuned)._ensure_client()
   assert c.timeout == 5.0 and c.max_retries == 0
 
 

@@ -3,9 +3,10 @@
 **Measured 2026-09-10** on the website deploy's real runs. Every agentic step resends the
 whole conversation so far, so the content that actually enters a pass is billed several times.
 
-**Effort: S-M.** A `run_tools` change in `llm.py`; no pack change.
+**Effort: S-M.** A `run_tools` change in `backends/http.py` (was `llm.py` until the backend
+seam moved it); no pack change.
 
-**Levers 2 + 3 DONE 2026-09-11** (`_ToolBudget` in `llm.py`, 2 tests, 122 pass):
+**Levers 2 + 3 DONE 2026-09-11** (`_ToolBudget` in `backends/http.py`, 2 tests, 122 pass):
 - a repeated identical `(tool, args)` call in one pass returns a pointer to the earlier
   result instead of the body. Safe because these tools are read-only and nothing writes
   during a pass, so the answer cannot have changed.

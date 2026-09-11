@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from .backends import HttpBackend
 from .gate import can_auto_run, decide
 from .git_sync import Git
-from .llm import ModelWrapper
 from .pack import Pack, sanitize_actions
 from .records import Record, new_id, now_iso, INPUT, ANALYSIS, TOOL_CALL, PROPOSAL
 from .store import Store
@@ -22,7 +22,7 @@ class Engine:
         self.cfg = cfg
         self.pack = pack
         self.store = Store(cfg.path("log"))
-        self.model = ModelWrapper(cfg.provider(), fake=fake_llm)
+        self.model = HttpBackend(cfg.provider(), fake=fake_llm)
         self.git = Git.from_config(cfg)
 
     # --- run-once ----------------------------------------------------------

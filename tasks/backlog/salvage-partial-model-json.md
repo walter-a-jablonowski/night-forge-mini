@@ -3,7 +3,7 @@
 Split out of `llm-json-retry.md` (done 2026-09-04, see `tasks/v done/`), which built the
 bounded retry and deliberately left this as the next rung.
 
-**Effort: S.** Confined to `_extract_json` / `_request_json` in `llm.py`.
+**Effort: S.** Confined to `_extract_json` / `_request_json` in `backends/http.py`.
 
 ## Where it bites
 The retry already covers the common case — live evidence: run-a257a9c6 fired two

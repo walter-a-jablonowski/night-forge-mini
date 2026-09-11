@@ -1,7 +1,8 @@
-"""ModelWrapper.run_tools: bounded read-only tool loop ending in a structured proposal."""
+"""HttpBackend.run_tools: bounded read-only tool loop ending in a structured proposal."""
 from types import SimpleNamespace
 
-from night_forge_mini.llm import LLMError, ModelWrapper
+from night_forge_mini.backends import LLMError
+from night_forge_mini.backends.http import HttpBackend
 from night_forge_mini.pack import proposal_schema
 from night_forge_mini.tools.registry import Tool
 
@@ -28,7 +29,7 @@ def make_wrapper( responses ):
     calls.append(kw)
     return script.pop(0)
 
-  w = ModelWrapper(PROVIDER)
+  w = HttpBackend(PROVIDER)
   w._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
   return w, calls
 

@@ -4,7 +4,7 @@ import types
 
 import pytest
 
-from night_forge_mini.llm import ModelWrapper
+from night_forge_mini.backends.http import HttpBackend
 
 from domain_pack import metrics as metrics_mod
 from domain_pack.site import Site
@@ -21,7 +21,7 @@ BARE = '<!DOCTYPE html><html><head><title>Bare</title></head><body>no meta</body
 
 @pytest.fixture
 def fake_model():
-  return ModelWrapper({'name': 'fake', 'model': 'fake', 'base_url': ''}, fake=True)
+  return HttpBackend({'name': 'fake', 'model': 'fake', 'base_url': ''}, fake=True)
 
 
 @pytest.fixture

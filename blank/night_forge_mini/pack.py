@@ -60,7 +60,7 @@ class Pack:
 def proposal_schema( action_names: list[str] | None = None,
                      payload_schema: dict | None = None ) -> dict:
     """The one canonical JSON schema for an analyze proposal, for
-    `ModelWrapper.complete_json(..., schema=...)` (native structured output).
+    `Backend.complete_json(..., schema=...)` (native structured output).
     `action_names` constrains `name` to the pack's actions via enum; a pack may
     extend the free-form `payload` part with its own `payload_schema`."""
     name: dict[str, Any] = {"type": "string"}

@@ -18,7 +18,7 @@ proposed action exactly as the model wrote it, or you reject it.
    is minutes of silence — tool calls and the finding should appear as they happen.
 
 ## Notes
-- Streaming needs a callback seam through `ModelWrapper`, which is also where a tracer would
+- Streaming needs a callback seam through the `Backend` (`backends/http.py`), which is also where a tracer would
   hook in (`observability.md`) — worth designing the two together rather than twice.
 - Edit-before-approve overlaps `approval-ui.md`: the same diff-and-edit problem, one in the
   terminal and one in a browser. Decide which surface is primary before building both.
