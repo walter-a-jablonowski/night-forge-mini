@@ -65,6 +65,7 @@ The blank system plus pne domain pack is merged in a new folder to get a running
     - cheap (only if possible, price is lower priority)
 
 - [ ] Make some usage overview: started in Readme
+- [ ] has nice /tasks setup with CLAUDE.md rules, move
 
 - [x] Make nice CLI [text](v%20done/260621%20-%20interactive-cli.md) — DONE (S): interactive REPL (`python -m night_forge_mini` / `shell`); run/inbox/approve/reject/trace, approve by inbox #. M (edit-before-approve + streaming) remains.
   - [ ] try

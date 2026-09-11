@@ -17,6 +17,14 @@ dependency instead of a copied folder.
 - The `Pack` seam already supports this with zero code change — packs import
   `night_forge_mini.*`, never the other way around.
 - Not yet: one moving deployment; packaging now is pure overhead.
+- **Evidence the trigger is nearer than it looks (2026-09-11):** the single deploy
+  `try/website/` had to be hand-re-synced ~8 times in one session of core work, and
+  twice it was run while STALE — once serving tools from an old pack (empty tool list),
+  once carrying an orphaned `llm.py` after the backend seam moved it. With one deploy
+  that is friction; with two it is a class of bug.
+- Raised independently as `backlog/deloy.md` (2026-09-11) with the same trigger, the
+  same reasoning and the same solution. **That file is a duplicate of this one and
+  should be deleted**; it is listed nowhere in `backlog.md` on purpose.
 
 **First step DONE (2026-07-05):** the core has `__version__` (starting at 0.2.0) next to
 `SCHEMA_V`, shown via `python -m night_forge_mini --version` — bump it on every core
