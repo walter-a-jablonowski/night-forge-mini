@@ -63,7 +63,7 @@ The blank system plus pne domain pack is merged in a new folder to get a running
 State: usable supervised, on a low-stakes artifact. No unattended, and no on anything you'd mind being wrong
        The guards are genuinely good — but the reason I trust them less than the count suggests is that every single live run found a new hole
 
-Then I would do a longer run. Maybe we can find something to fix. Just clear /try, deploy the new version and start?
+- [1] Anything left from the test run that we should do?
 
 - [ ] Test run looking for errors?
 - [ ] Make an error check?
