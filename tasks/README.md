@@ -1,6 +1,10 @@
-# How `/tasks` works (for agents)
 
-- **`-this.md`** — the active worklist. Usually **user-edited** (source of intent); the agent edits it only when the user asks.
-- **`backlog/`** — one file per issue/feature. **Agent-edited often**; user may add items too.
-- **`resources/`** — information-only docs + large task details linked from elsewhere. Reference, no tasks.
-- **`v done/`** — completed tasks (file or folder, date-prefixed). **Ignore** unless asked.
+python -m night_forge_mini approve <id>
+
+- only the one action is on halt
+- when approved the next run does it
+
+$ run-once        # auto-runs what it can, parks the rest as pending, EXITS (shell returns)
+$ inbox           # (optional) see what's held
+$ approve <id>    # runs just that held action, logs decision+outcome, EXITS
+$ approve <id2>   # each held action approved independently
