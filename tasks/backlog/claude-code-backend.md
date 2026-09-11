@@ -94,6 +94,31 @@ The seam is the real work, and it is overdue independently of Claude Code:
   `"backend": "claudeCode"`, `{ "bin": "", "model": "opus", "timeout": 300 }` — rather than
   forcing it into `providers{}` beside `base_url`/`api_key_env`.
 
+## Phase 1 — the backend seam: DONE 2026-09-11
+`blank/night_forge_mini/backends/`: `base.py` (the `Backend` protocol + `LLMError` +
+explicit `register`/`get`, modelled on dev-commander's `lib/agents/base.py`), `http.py`
+(the former `ModelWrapper`, moved with `git mv` so history follows), `fake.py`, and
+`__init__.py` wiring both in the tools-package house style. `Engine` now SELECTS a
+backend (`cfg.backend`, default `http`; `--fake-llm` picks `fake`) instead of putting the
+real one into a mode, and an unknown name is a config error naming what is available.
+125 tests pass — the 122 that existed before, unchanged, which is the evidence the move
+changed no behaviour, plus 3 for the selection itself.
+
+**Two deviations from the plan, both deliberate:**
+- *The `model.fake` branches in the packs STAY.* The plan was to move them behind a
+  pack-supplied hook, but `_fake_actions` needs the artifact state AND the snippets,
+  neither of which exists inside `run_tools(system, user, schema)` — and the fake branch
+  deliberately falls through to the shared tail of `analyze` (stale-edit stamping, metric
+  measurement). Any hook design either moved domain knowledge out of the pack or
+  duplicated that tail. The real defect was narrower than first written up: packs were
+  branching on an **undeclared attribute of a concrete class**. `fake` is now a declared
+  part of the `Backend` protocol, so branching on it is reading a documented capability.
+  `HttpBackend` lost its dead fake mode entirely, which was the actual dead weight.
+- *The analyze/judge role map is NOT built.* Nothing consumes it until a second backend
+  exists — today both roles would resolve to the same `http`. Build it in phase 2 with its
+  first real consumer rather than shipping unused machinery; the decision below stands and
+  the seam already supports it.
+
 ## Decisions (2026-09-10, measured on the live runs)
 
 Both open questions are resolved. The measurements behind them are in

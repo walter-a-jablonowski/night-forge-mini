@@ -1,6 +1,9 @@
 {
   "_comment": "Blank-core infra template. The DOMAIN (goal, metric, connector impl, actions) lives in the pack, not here. When you drop in a domain pack, use ITS config.json (which adds connector params + domain paths + a recommended allow_list). Edit provider keys via .env.",
 
+  "_backend_comment": "HOW a model is reached. \"http\" (default) is every OpenAI-compatible provider below; --fake-llm selects the offline backend. An agent CLI on your own subscription is the next sibling - see tasks/backlog/claude-code-backend.md.",
+  "backend": "http",
+
   "provider": "openrouter",
   "_providers_comment": "each provider optionally takes: timeout (seconds per request, default 120) and max_retries (default 2; SDK backoff on 429/5xx/connection errors)",
   "providers": {

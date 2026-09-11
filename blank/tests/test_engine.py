@@ -147,12 +147,16 @@ def test_expected_impact_is_sanitized_to_numbers( tmp_path ):
 def test_tool_trace_is_logged_as_spans_under_the_analysis( tmp_path ):
   items = [{'id': 's1', 'text': 'one', 'source': 'x'}]
 
+  span = {'tool': 'read_entry', 'args': {'id': 'vpn'}, 'status': 'ok',
+          'chars': 42, 'start': 't0', 'end': 't1'}
+
   def analyze(model, *, goal, snippets, history):
-    model._tool_trace.append({'tool': 'read_entry', 'args': {'id': 'vpn'}, 'status': 'ok',
-                              'chars': 42, 'start': 't0', 'end': 't1'})
     return {'finding': 'f', 'metric': {}, 'actions': []}
 
   eng = make_engine(tmp_path, analyze, items)
+  # whatever the BACKEND reports as its trace is what the Engine must log — the contract
+  # is `take_tool_trace()`, not any one backend's internals
+  eng.model.take_tool_trace = lambda: [dict(span)]
   eng.run_once()
   analysis = eng.store.of_type(ANALYSIS)[0]
   spans = eng.store.of_type(TOOL_CALL)
@@ -254,3 +258,38 @@ def test_pending_work_does_not_spin_when_a_run_changes_nothing( tmp_path ):
   r = eng.run_once()                                  # previous pending run did nothing
   assert r['status'] == 'noop'
   assert 'no progress' in r['reason']
+
+
+# --- the backend seam ------------------------------------------------------
+
+def test_fake_llm_selects_the_fake_backend_rather_than_a_mode( tmp_path ):
+  """`--fake-llm` picks a backend; the http one has no special mode to get stuck in."""
+  from night_forge_mini.backends import FakeBackend, HttpBackend
+
+  analyze = lambda model, **kw: {'finding': 'f', 'metric': {}, 'actions': []}
+  items = [{'id': 's1', 'text': 'one', 'source': 'x'}]
+
+  eng = make_engine(tmp_path, analyze, items)
+  assert isinstance(eng.model, FakeBackend) and eng.model.fake is True
+  assert eng.model.label() == 'fake-llm'
+  assert HttpBackend.fake is False
+
+
+def test_unknown_backend_name_is_a_clear_config_error( tmp_path ):
+  pack = Pack(domain='test', goal='g', connector=StubConnector([]),
+              actions=make_actions(), analyze=lambda model, **kw: {})
+  cfg = make_cfg(tmp_path, [])
+  cfg.raw['backend'] = 'nope'
+  with pytest.raises(ValueError) as e:
+    Engine(cfg, pack)
+  assert 'nope' in str(e.value) and 'http' in str(e.value)   # names what IS available
+
+
+def test_fake_backend_refuses_to_answer_instead_of_inventing( tmp_path ):
+  """A missed branch must fail loudly: a silent stub would turn it into a made-up answer."""
+  from night_forge_mini.backends import FakeBackend, LLMError
+
+  with pytest.raises(LLMError):
+    FakeBackend().complete_json('sys', 'usr')
+  with pytest.raises(LLMError):
+    FakeBackend().run_tools('sys', 'usr', tools=[])

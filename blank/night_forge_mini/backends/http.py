@@ -69,17 +69,16 @@ class HttpBackend:
     HERE — this backend calls the model, runs the tool it asked for, and feeds the result
     back; a backend that is itself an agent does the opposite."""
 
-    def __init__(self, provider: dict[str, Any], fake: bool = False):
+    fake = False        # this one really calls; `--fake-llm` selects FakeBackend instead
+
+    def __init__(self, provider: dict[str, Any]):
         self.provider = provider
-        self.fake = fake
         self._client = None
         self._schema_ok: bool | None = None  # None = untested, False = provider rejected it
         self._tool_trace: list[dict] = []    # spans of the current run_tools loop
 
     # The single one-shot model call site.
     def complete_json(self, system: str, user: str, schema: dict | None = None) -> dict[str, Any]:
-        if self.fake:
-            raise LLMError("complete_json called in fake mode; analyzer should branch earlier")
         return self._request_json(_messages(system, user), schema)
 
     # The agentic call site: a bounded READ-ONLY tool loop ending in the same JSON proposal.
@@ -87,8 +86,6 @@ class HttpBackend:
                   schema: dict | None = None, max_steps: int = 6,
                   result_cap: int = 16_000,
                   result_budget: int = 40_000) -> dict[str, Any]:
-        if self.fake:
-            raise LLMError("run_tools called in fake mode; analyzer should branch earlier")
         usable = {t.name: t for t in tools if t.available()}
         messages = _messages(system, user)
         if not usable:  # nothing to offer (e.g. keys missing) -> plain structured call

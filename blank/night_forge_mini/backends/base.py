@@ -31,6 +31,13 @@ class Backend(Protocol):
     steps back, so implementations must not assume the caller drives it.
     """
 
+    # True when this backend reaches no model at all (`--fake-llm`). Declared here on
+    # purpose: a caller that must stay deterministic offline — a pack's analyze, an
+    # LLM-judged metric — has to know BEFORE it asks, and should not have to read an
+    # implementation's attributes to find out. Branching on this is correct; what the
+    # offline answer looks like is domain knowledge and stays in the pack.
+    fake: bool
+
     def complete_json(self, system: str, user: str,
                       schema: dict | None = None) -> dict[str, Any]:
         """One completion that must yield a JSON object."""
