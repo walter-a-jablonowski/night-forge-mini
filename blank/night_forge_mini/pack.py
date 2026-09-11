@@ -17,7 +17,7 @@ The core does `import domain_pack; pack = domain_pack.build_pack(cfg)`.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
 from .records import new_id
@@ -55,6 +55,11 @@ class Pack:
     # measurably short of the goal, and would otherwise never get to finish the job.
     # Must be CHEAP (it runs before every pass) and must not use the model.
     pending_work: Callable[[], str | None] | None = None
+    # The READ-ONLY tools this pack offers the model during analyze. Declared here because
+    # an agent backend cannot be handed Python callables: it runs in its own process and
+    # reaches them over MCP, where a SECOND process rebuilds the pack and serves this same
+    # list. One construction, two consumers — see tasks/backlog/claude-code-backend.md.
+    analyze_tools: list = field(default_factory=list)
 
 
 def proposal_schema( action_names: list[str] | None = None,

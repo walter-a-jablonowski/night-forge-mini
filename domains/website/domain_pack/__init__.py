@@ -69,7 +69,8 @@ def build_pack(cfg: Config) -> Pack:
         return f"{n} broken internal link(s) — pages are linked but missing" if n else None
 
     return Pack(domain=DOMAIN, goal=goal, connector=connector,
-                actions=build_actions(site), analyze=analyze, pending_work=pending_work)
+                actions=build_actions(site), analyze=analyze, pending_work=pending_work,
+                analyze_tools=analyze_mod.tools_for(site))
 
 
 def _text(v) -> str:

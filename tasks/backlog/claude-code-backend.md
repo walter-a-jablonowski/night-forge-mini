@@ -119,6 +119,35 @@ changed no behaviour, plus 3 for the selection itself.
   first real consumer rather than shipping unused machinery; the decision below stands and
   the seam already supports it.
 
+## Phase 2a — the MCP bridge: DONE 2026-09-11, verified against CLI 2.1.268
+`blank/night_forge_mini/mcp_server.py` serves a pack's `analyze_tools` over stdio
+JSON-RPC. **Live proof**: the CLI reported `MCP SERVER: nfm -> connected`, called
+`mcp__nfm__read_page`, and answered with the REAL site's title (`NutriBowl - Fast Healthy
+Bowls`) — so the agent read our artifact through our tool, not its own file access.
+
+- **`Pack.analyze_tools`** is the new seam: the tool set is built once in `build_pack` and
+  has two consumers — `analyze` in-process, and this server in the CLI's subprocess. An
+  agent backend cannot be handed Python callables, so the second process rebuilds the pack.
+- **The deploy dir is an argument** (`python -m night_forge_mini.mcp_server <dir>`, with
+  `PYTHONPATH` set to it): the CLI runs in an empty working directory on purpose, so the
+  server cannot inherit a useful cwd.
+- **Availability filtering was a live-caught bug.** The first run offered `web_search`
+  with no API key, because only `run_tools` filtered on `Tool.available()`. A keyed tool
+  with no key must be ABSENT, not broken — advertising one wastes a step and reads to the
+  model as a broken tool rather than an absent one. Fixed + test.
+- A failing tool is an MCP error RESULT, never a protocol error, so the agent sees the
+  reason and can correct itself — the same rule the in-process backend follows.
+- 9 tests drive the server over a scripted stdio, so none of this needs the CLI to run.
+
+Working invocation (verified):
+```
+claude -p --output-format stream-json --verbose --setting-sources "" --tools "" \n  --mcp-config '<inline json, forward slashes>' --strict-mcp-config \n  --allowedTools "mcp__nfm__read_page,..."          # prompt on stdin
+```
+
+**Still to build (phase 2b):** `ClaudeCodeBackend` itself — spawn, parse the stream-json
+into our `tool_call` spans + proposal, refuse the turn unless the init event says
+`connected` — and the analyze/judge role map alongside it.
+
 ## Decisions (2026-09-10, measured on the live runs)
 
 Both open questions are resolved. The measurements behind them are in

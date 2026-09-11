@@ -77,7 +77,7 @@ def analyze(model, *, site: Site, goal: str, constraints: str, snippets: list[di
 
         # The prompt names the tools actually on offer, so it cannot promise the model a
         # tool that isn't registered (web_search without a key was one such phantom call).
-        tools = _tools(site) if tool_steps > 0 else []
+        tools = tools_for(site) if tool_steps > 0 else []
         system = SYSTEM.format(goal=goal, constraints=_constraints_block(constraints),
                                actions=sorted(ACTIONS), tools=_tools_line(tools),
                                metric_keys=", ".join(metrics_mod.keys(metric_mods)) or "(none)")
@@ -129,7 +129,7 @@ def _tools_line(tools: list[Tool]) -> str:
     return ", ".join(t.name for t in tools)
 
 
-def _tools(site: Site) -> list[Tool]:
+def tools_for(site: Site) -> list[Tool]:
     """read_page + the core research tools. run_tools drops unavailable ones itself
     (e.g. web_search without a key), so this list is the OFFER, not a guarantee."""
     tools = [_read_page_tool(site)]
