@@ -97,14 +97,13 @@ class HttpBackend:
         # decides whether a long pass still fits at all.
         budget = _ToolBudget(cap=result_cap, remaining=result_budget)
 
-        client = self._ensure_client()
         defs = [{"type": "function",
                  "function": {"name": t.name, "description": t.description,
                               "parameters": t.params or {"type": "object", "properties": {}}}}
                 for t in usable.values()]
         for _ in range(max_steps):
-            resp = client.chat.completions.create(model=self.provider["model"],
-                                                  messages=messages, temperature=0.2, tools=defs)
+            resp = self._create(model=self.provider["model"], messages=messages,
+                                temperature=0.2, tools=defs)
             msg = resp.choices[0].message
             calls = getattr(msg, "tool_calls", None)
             if not calls:  # model is done reading -> its answer is the proposal
@@ -131,6 +130,29 @@ class HttpBackend:
         messages.append({"role": "user",
                          "content": "Tool budget exhausted - return the final JSON proposal now."})
         return self._request_json(messages, schema)
+
+    def _create(self, **kwargs):
+        """Every request to the provider goes through here.
+
+        A transient upstream 4xx is retried ONCE: OpenRouter routes to a third-party
+        provider per request, so the identical request usually lands somewhere healthy on
+        the second try. Measured: one flaky route (`400 Provider returned error` from
+        AtlasCloud) killed three judge metrics and then a whole analyze pass, because the
+        agentic loop's own call had no handling at all.
+
+        A 4xx that blames a PARAMETER is not retried — resending it would fail the same
+        way; that case is the caller's to handle by sending less."""
+        client = self._ensure_client()
+        try:
+            return client.chat.completions.create(**kwargs)
+        except Exception as e:  # noqa: BLE001 - re-raised unless it is worth one retry
+            if not _client_refused(e) or _param_rejected(e):
+                raise
+            ts = now_iso()
+            self._tool_trace.append({"tool": "provider_retry", "args": {}, "status": "error",
+                                     "chars": 0, "start": ts, "end": ts,
+                                     "detail": str(e)[:200]})
+            return client.chat.completions.create(**kwargs)
 
     def take_tool_trace(self) -> list[dict]:
         """Return and clear the spans of the tool calls made since the last take."""
@@ -217,12 +239,11 @@ class HttpBackend:
 
     def _raw_json_reply(self, messages: list[dict], schema: dict | None) -> str:
         """The model call itself: structured output when the provider accepts it."""
-        client = self._ensure_client()
         kwargs: dict[str, Any] = {"model": self.provider["model"], "messages": messages,
                                   "temperature": 0.2}
         if schema is not None and self._schema_ok is not False:
             try:
-                resp = client.chat.completions.create(
+                resp = self._create(
                     **kwargs,
                     response_format={"type": "json_schema",
                                      "json_schema": {"name": "proposal", "schema": schema}})
@@ -239,7 +260,7 @@ class HttpBackend:
                 if _param_rejected(e):
                     self._schema_ok = False
 
-        resp = client.chat.completions.create(**kwargs)
+        resp = self._create(**kwargs)
         return resp.choices[0].message.content or ""
 
     def _trace_json_retry(self, error: Exception) -> None:

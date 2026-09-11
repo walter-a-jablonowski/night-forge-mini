@@ -216,3 +216,33 @@ def test_tool_results_are_bounded_by_a_total_budget():
   # the LOG keeps the honest size even when the prompt got less
   spans = w.take_tool_trace()
   assert spans[1]['chars'] == 80 and spans[1]['sent'] < 80
+
+
+def test_a_transient_upstream_400_in_the_TOOL_LOOP_is_retried():
+  """Pass 6 of the long run died outright on `400 Provider returned error` from a flaky
+  OpenRouter upstream. The earlier 400 fix only covered the JSON completion path — the
+  agentic loop's own call had no handling at all, so one bad route killed a whole pass."""
+  class Upstream(Exception):
+    status_code = 400
+    def __init__( self ):
+      super().__init__("Error code: 400 - {'error': {'message': 'Provider returned error', "
+                       "'metadata': {'provider_name': 'AtlasCloud'}}}")
+
+  state = {'n': 0}
+  script = [response(content=REPLY)]
+
+  def create( **kw ):
+    state['n'] += 1
+    if state['n'] == 1:
+      raise Upstream()               # the route we happened to get is unhealthy
+    return script.pop(0)
+
+  from types import SimpleNamespace
+  from night_forge_mini.backends.http import HttpBackend
+  w = HttpBackend(PROVIDER)
+  w._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+
+  out = w.run_tools('sys', 'usr', tools=[read_tool()], schema=SCHEMA)
+  assert out == {'finding': 'f', 'actions': []}          # the pass survives
+  assert state['n'] == 2                                 # retried exactly once
+  assert [s['tool'] for s in w.take_tool_trace()] == ['provider_retry']   # and it is visible

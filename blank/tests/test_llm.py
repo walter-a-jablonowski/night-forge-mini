@@ -139,9 +139,13 @@ def test_a_transient_upstream_400_does_not_disable_structured_output():
   w, calls = make_wrapper(handler)
   schema = proposal_schema(['add_entry'])
   assert w.complete_json('sys', 'usr', schema=schema) == {'finding': 'f', 'actions': []}
-  assert len(calls) == 2 and 'response_format' not in calls[1]   # retried plain
 
-  # ...but the NEXT call must try the schema again — nothing was learned about the parameter
+  # the request is resent AS IS — OpenRouter routes per request, so the same call usually
+  # lands on a healthy provider. The schema survives; falling back to plain would have
+  # given up structured output over someone else's outage.
+  assert len(calls) == 2 and 'response_format' in calls[1]
+
+  # ...and nothing was learned about the parameter, so later calls still send the schema
   w.complete_json('sys', 'usr', schema=schema)
   assert 'response_format' in calls[2]
 
