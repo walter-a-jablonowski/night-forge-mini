@@ -21,8 +21,8 @@ Reorganised 2026-09-11 after the Claude Code backend.
 **0.3.x (next) — instrument and finish what just shipped.** No new seam; this is the
 release that makes the last two legible and pays off their loose ends.
 
-0. long-run findings (2026-09-11) — 6 bugs from 5 live passes on an unfamiliar topic;
-   5 fixed, 1 deliberately downgraded. The record of what was wrong and why, kept
+0. long-run findings (2026-09-11) — 7 bugs from 6 live passes on an unfamiliar topic;
+   6 fixed, 1 deliberately downgraded. The record of what was wrong and why, kept
    because most of it is not visible from the diffs alone.
    [text](backlog/long-run-2026-09-11.md)
 1. observability (S) — wire one tracer through the backend seam: one call site per
