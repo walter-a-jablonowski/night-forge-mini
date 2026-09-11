@@ -119,6 +119,36 @@ changed no behaviour, plus 3 for the selection itself.
   first real consumer rather than shipping unused machinery; the decision below stands and
   the seam already supports it.
 
+## Phase 2b — `ClaudeCodeBackend`: DONE 2026-09-11, LIVE PASS VERIFIED
+`blank/night_forge_mini/backends/claude_code.py`. A whole analyze pass ran on the
+subscription, with no API key involved (run-246291a8):
+
+```
+run        : run-246291a8  (model: claudeCode:default)
+captured   : 0 new artifact(s)                     # the pending-work trigger
+proposal   : 5 actions, all AUTO-RAN ok, one git commit each
+```
+It read all five site files and the asset sidecar through our MCP tools, searched for an
+image, proposed `create_page tips.html` + four `edit_content`s to add the nav entry
+consistently, and left the site at **5 pages / 0 broken links / 5 SEO**. 13 `tool_call`
+spans were logged from the stream, indistinguishable in shape from HTTP-backend spans.
+
+- **The role split works live.** `goal_coverage` still scored 10.0 that run — measured
+  through the HTTP one-shot delegate, not a second CLI turn, exactly as decided.
+- **The system prompt was the one real bug**, and the live run is what found it: the first
+  version built the command without `--system-prompt`, so the pack's rules never reached
+  the agent. It diagnosed the broken link correctly and then declined to act — *"I don't
+  have a write/edit tool available in this session"* — which is the actions-vs-tools
+  confusion arriving from the other side. My 7 assertions about that command line had not
+  included the prompt being in it; there is now a regression test.
+- 11 tests drive the CLI through an injected runner, so the parser, the connected-guard,
+  the command construction and the role split need no subprocess. **145 tests pass.**
+- Deviation held: there is no separate analyze/judge role MAP. The split falls exactly on
+  the two protocol methods (`run_tools` = agentic = CLI, `complete_json` = one-shot =
+  cheap provider), so no pack changed and the Engine holds one backend. **Known limit:**
+  a pack running one-shot (`analyze_tool_steps: 0`) would therefore analyze on the HTTP
+  provider, not the CLI. Documented rather than guessed at — revisit if a deploy wants it.
+
 ## Phase 2a — the MCP bridge: DONE 2026-09-11, verified against CLI 2.1.268
 `blank/night_forge_mini/mcp_server.py` serves a pack's `analyze_tools` over stdio
 JSON-RPC. **Live proof**: the CLI reported `MCP SERVER: nfm -> connected`, called

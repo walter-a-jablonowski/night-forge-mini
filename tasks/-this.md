@@ -58,6 +58,11 @@ The blank system plus pne domain pack is merged in a new folder to get a running
   `tools/registry.py`. Refs: grid-view `lib/ai/claude.php` + `mcp/grid_mcp.php`,
   dev-commander `lib/agents/base.py`. Covers the provider/agent clean-up too — the
   `model.fake` branches in every pack are the current smell.
+  - [x] BUILT 2026-09-11 — backend seam (`backends/`: base/http/fake/claude_code) + the
+    stdio MCP bridge (`mcp_server.py`). A full analyze pass ran on the subscription
+    (run-246291a8): 5 actions, all auto-ran, site left at 5 pages / 0 broken links.
+    145 tests. Set `"backend": "claudeCode"` in config; one-shot calls (judge metrics)
+    still go to the configured provider.
   - [x] both open questions decided 2026-09-10 (per-ROLE backend: analyze=Claude Code,
     judge=cheap http; fresh CLI session per run — the cross-run cacheable prefix is only
     ~856 tokens, and within-run caching is the CLI's own)

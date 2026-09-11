@@ -4,7 +4,8 @@ from types import SimpleNamespace
 import pytest
 
 from night_forge_mini.backends import LLMError
-from night_forge_mini.backends.http import HttpBackend, _extract_json
+from night_forge_mini.backends.base import _extract_json
+from night_forge_mini.backends.http import HttpBackend
 from night_forge_mini.pack import proposal_schema
 
 PROVIDER = {'name': 'p', 'model': 'm', 'base_url': 'http://localhost', 'api_key_env': 'K'}

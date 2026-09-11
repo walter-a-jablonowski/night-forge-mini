@@ -28,7 +28,7 @@ from typing import Any
 
 from ..records import now_iso
 from ..tools.registry import Tool
-from .base import LLMError
+from .base import LLMError, _extract_json
 
 
 JSON_ATTEMPTS = 3    # one call plus two retries when the reply will not parse
@@ -266,33 +266,3 @@ def _param_rejected(e: Exception) -> bool:
     parameter) — the only case where retrying without `response_format` makes sense.
     Auth, network and server errors must propagate, not trigger a blind retry."""
     return getattr(e, "status_code", None) in (400, 422)
-
-
-def _extract_json(text: str) -> dict[str, Any]:
-    """Tolerant JSON parse — models sometimes wrap JSON in prose or code fences.
-
-    Every parse failure must leave as `LLMError`, because that is what the retry in
-    `_request_json` catches. `ValueError`, not `JSONDecodeError`, is the net to use: a
-    judge once answered with a 64714-digit number, where `json.loads` raises a bare
-    ValueError from int() — which escaped both the fallback below and the retry, and
-    surfaced as a crashed metric instead of a second attempt."""
-    text = text.strip()
-    try:
-        return _as_object(json.loads(text))
-    except ValueError:
-        pass
-    m = re.search(r"\{.*\}", text, re.DOTALL)
-    if m:
-        try:
-            return _as_object(json.loads(m.group(0)))
-        except ValueError as e:
-            raise LLMError(f"model did not return valid JSON: {e}\n---\n{text[:500]}")
-    raise LLMError(f"no JSON found in model output:\n{text[:500]}")
-
-
-def _as_object(parsed: Any) -> dict[str, Any]:
-    """Valid JSON that is not an object is still the wrong answer here — every caller
-    expects a dict, so treat it like any other parse failure (retryable)."""
-    if not isinstance(parsed, dict):
-        raise ValueError(f"expected a JSON object, got {type(parsed).__name__}")
-    return parsed
