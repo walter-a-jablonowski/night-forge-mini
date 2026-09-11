@@ -51,9 +51,10 @@ The blank system plus pne domain pack is merged in a new folder to get a running
 
 - [x] Add Claude Code as AI — explored 2026-09-10, task written:
 
-  We have 40% left in the current 5 hour rate limit window. Do you think that is enough for adding the Claude Code integration?
+  - [text](backlog/claude-code-backend-refinements.md)
+  - [text](backlog/analyze-context-amplification.md)
   
-  [text](backlog/claude-code-backend.md). NOT a 4th `providers{}` entry — the CLI is an
+  [text](v%20done/260911%20-%20claude-code-backend.md). NOT a 4th `providers{}` entry — the CLI is an
   agent that runs the tool loop itself, so it needs a backend SEAM plus an MCP bridge over
   `tools/registry.py`. Refs: grid-view `lib/ai/claude.php` + `mcp/grid_mcp.php`,
   dev-commander `lib/agents/base.py`. Covers the provider/agent clean-up too — the
@@ -63,6 +64,8 @@ The blank system plus pne domain pack is merged in a new folder to get a running
     (run-246291a8): 5 actions, all auto-ran, site left at 5 pages / 0 broken links.
     145 tests. Set `"backend": "claudeCode"` in config; one-shot calls (judge metrics)
     still go to the configured provider.
+  - [ ] [text](backlog/claude-code-backend-refinements.md) — edges left on purpose:
+    per-tool span timestamps, the one-shot/HTTP combination, measuring a turn's cost
   - [x] both open questions decided 2026-09-10 (per-ROLE backend: analyze=Claude Code,
     judge=cheap http; fresh CLI session per run — the cross-run cacheable prefix is only
     ~856 tokens, and within-run caching is the CLI's own)

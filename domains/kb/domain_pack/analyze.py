@@ -28,6 +28,13 @@ from .actions import ACTIONS, KnowledgeBase, slug
 SCHEMA = proposal_schema(sorted(ACTIONS))
 
 
+def tools_for(kb) -> list:
+    """The READ-ONLY tools this pack offers during analyze. Public because an agent
+    backend reaches them over MCP from a second process, which rebuilds the pack
+    and serves this same list (see night_forge_mini/mcp_server.py)."""
+    return [_read_entry_tool(kb)]
+
+
 def _read_entry_tool(kb: KnowledgeBase) -> Tool:
     """READ-ONLY tool for the agentic loop: the full markdown of one KB entry, so the
     model reads what it is about to edit instead of guessing from a 120-char preview."""
@@ -74,7 +81,7 @@ def analyze(model, *, kb: KnowledgeBase, goal: str, snippets: list[dict],
         user = _render_context(goal, context_index, snippets, history, total=len(kb_index))
         system = SYSTEM.format(goal=goal, actions=sorted(ACTIONS))
         if tool_steps > 0:  # agentic: model may read entries in full before proposing
-            result = model.run_tools(system, user, tools=[_read_entry_tool(kb)],
+            result = model.run_tools(system, user, tools=tools_for(kb),
                                      schema=SCHEMA, max_steps=tool_steps)
         else:               # tool_steps 0 = one-shot mode
             result = model.complete_json(system, user, schema=SCHEMA)

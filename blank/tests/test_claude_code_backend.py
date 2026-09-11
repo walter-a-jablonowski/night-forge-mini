@@ -184,3 +184,17 @@ def test_a_one_shot_call_without_a_cheap_backend_says_what_to_configure( tmp_pat
 def test_label_names_the_backend_and_model( tmp_path ):
   assert backend(tmp_path, '', model='opus').label() == 'claudeCode:opus'
   assert backend(tmp_path, '').label() == 'claudeCode:default'
+
+
+def test_a_turn_with_no_usable_tools_is_refused_before_it_starts( tmp_path ):
+  """A connected server offering NOTHING passes the connected check while leaving the agent
+  as blind as a failed one. The kb pack declared no analyze_tools at first — exactly this."""
+  keyed = Tool(name='web_search', description='s', run=lambda query='': '',
+               requires=['DEFINITELY_UNSET_KEY_FOR_TEST'], params={'type': 'object'})
+  b = backend(tmp_path, stream(init(), final(PROPOSAL)))
+
+  for offered in ([], [keyed]):
+    with pytest.raises(LLMError) as e:
+      b.run_tools('sys', 'usr', tools=offered)
+    assert 'no usable tools' in str(e.value)
+  assert b.last_cmd is None                            # the CLI was never started

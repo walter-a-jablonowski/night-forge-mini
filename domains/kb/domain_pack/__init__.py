@@ -30,4 +30,5 @@ def build_pack(cfg: Config) -> Pack:
                                    history=history, context_max=context_max,
                                    tool_steps=tool_steps)
 
-    return Pack(domain=DOMAIN, goal=GOAL, connector=connector, actions=actions, analyze=analyze)
+    return Pack(domain=DOMAIN, goal=GOAL, connector=connector, actions=actions,
+                analyze=analyze, analyze_tools=analyze_mod.tools_for(kb))

@@ -5,6 +5,18 @@ user's own subscription, instead of an API key. Two apps already do this beside 
 OpenRouter/Gemini providers and it works well — a much smarter model for complex passes, at
 no per-token cost.
 
+**✅ BUILT 2026-09-11 — live-verified end to end.** A full analyze pass runs on the
+subscription with no api key (run-246291a8, 5 actions applied, site left at 5 pages / 0
+broken links). Shipped: `backends/` (base/http/fake/claude_code), `mcp_server.py`,
+`Pack.analyze_tools` wired in BOTH packs, `backend` + `claudeCode` documented in all three
+configs. 146 tests. The edges left on purpose are
+`backlog/claude-code-backend-refinements.md`.
+
+Two late gaps found while checking completeness, both fixed:
+- the **kb pack declared no `analyze_tools`**, so a kb deploy would have handed the agent a
+  connected MCP server offering nothing — the invent-an-answer case with the guard passing.
+- `run_tools` now **refuses a turn with no usable tools at all**, for the same reason.
+
 **Effort: M.** Split in two halves that are worth doing in order:
 1. **the backend seam** (S) — worth doing on its own merits, see "Clean implementation",
 2. **the Claude Code backend + MCP bridge** (M) — the new capability.

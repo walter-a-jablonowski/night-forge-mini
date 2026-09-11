@@ -1,6 +1,11 @@
 {
   "_comment": "Website domain — ready-to-run deploy config. The GOAL is operator data: set site_goal (and optional constraints) here — the pack is only the mechanism. Provider keys via .env.",
 
+  "_backend_comment": "HOW a model is reached. http = the providers below; claudeCode = the local Claude Code CLI on your own subscription (no api key). --fake-llm selects the offline backend.",
+  "backend": "http",
+  "_claudeCode_comment": "Agent-CLI backend (backend: claudeCode): runs the analyze pass on your own Claude Code subscription instead of an api key, reaching this deploy's tools over MCP. bin empty = claude from PATH; model empty = the CLI default (e.g. opus | sonnet); timeout is seconds for the whole turn - it runs the entire tool loop. One-shot calls (an LLM-judged metric) still go to the provider below, which must stay configured.",
+  "claudeCode": { "bin": "", "model": "", "timeout": 600 },
+
   "provider": "openrouter",
   "providers": {
     "openrouter": {

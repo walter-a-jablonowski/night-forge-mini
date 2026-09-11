@@ -56,6 +56,14 @@ class ClaudeCodeBackend:
         """One CLI turn. `tools` is used for its NAMES only — the callables live in this
         process and the agent cannot reach them; it reaches equivalents over MCP."""
         names = [f"{MCP_PREFIX}{t.name}" for t in tools if t.available()]
+        if not names:
+            # A connected server offering NOTHING passes the check below while leaving the
+            # agent exactly as blind as a failed one — and a blind agent answers anyway.
+            # Refuse here, where the cause is still legible (a pack that declares no
+            # `analyze_tools`, or every tool missing its key).
+            raise LLMError("the Claude Code backend was given no usable tools: the pack "
+                           "declares none, or none is available. An agent with no tools "
+                           "does not fail, it invents — so the turn is refused instead.")
         out, code, err = self._run(self._command(names, system), user, self.timeout)
         turn = self._parse(out)
 
