@@ -65,7 +65,8 @@ State: usable supervised, on a low-stakes artifact. No unattended, and no on any
 
 Then I would do a longer run. Maybe we can find something to fix. Just clear /try, deploy the new version and start?
 
-- [ ] Longer error run?
+- [ ] Test run looking for errors?
+- [ ] Make an error check?
 - [ ] Make some usage overview: started in Readme
 - [ ] has nice /tasks setup with CLAUDE.md rules, move
 
