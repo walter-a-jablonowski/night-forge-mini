@@ -229,9 +229,15 @@ class HttpBackend:
                 self._schema_ok = True
                 return resp.choices[0].message.content or ""
             except Exception as e:
-                if not _param_rejected(e):
+                if not _client_refused(e):
                     raise
-                self._schema_ok = False  # this provider can't take response_format -> plain from now on
+                # Distinguish WHY the 4xx came back. A provider that cannot take the
+                # parameter says so, and that is worth remembering for the whole run. A
+                # bare "provider returned error" is a routing failure that has nothing to
+                # do with our request — remembering it would silently disable structured
+                # output for every later call. Both retry plain; only one is learned from.
+                if _param_rejected(e):
+                    self._schema_ok = False
 
         resp = client.chat.completions.create(**kwargs)
         return resp.choices[0].message.content or ""
@@ -268,8 +274,21 @@ def _messages(system: str, user: str) -> list[dict]:
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
-def _param_rejected(e: Exception) -> bool:
-    """True when the provider rejected the request itself (4xx: unknown/unsupported
-    parameter) — the only case where retrying without `response_format` makes sense.
-    Auth, network and server errors must propagate, not trigger a blind retry."""
+# words that mean the PARAMETER was refused, rather than the request merely failing
+_PARAM_WORDS = ("response_format", "json_schema", "unsupported parameter",
+                "unknown parameter", "unsupported_parameter", "not supported")
+
+
+def _client_refused(e: Exception) -> bool:
+    """True for a 4xx the caller can respond to by sending less. Auth, network and server
+    errors must propagate, not trigger a blind retry."""
     return getattr(e, "status_code", None) in (400, 422)
+
+
+def _param_rejected(e: Exception) -> bool:
+    """True when that 4xx blames the PARAMETER — the only case worth remembering.
+
+    Measured live: an OpenRouter upstream returned `400 Provider returned error` three
+    times, and because every 400 counted as a parameter rejection, one flaky route would
+    have turned structured output off for the rest of the run."""
+    return _client_refused(e) and any(w in str(e).lower() for w in _PARAM_WORDS)

@@ -23,7 +23,9 @@ from night_forge_mini.tools.read_url import read_url as _read_url
 _BODY_MARKER = "Markdown Content:"
 # a line that is only a markdown link (optionally as a bullet) — menu, not content
 _LINK_LINE = re.compile(r'^[\s*\-]*(?:\[[^\]]*\]\([^)]*\)[\s,.*\-]*)+$')
-_MIN_PROSE = 60          # chars of non-link text before a line counts as the article
+_IMAGE = re.compile(r'!\[[^\]]*\]\([^)]*\)')     # ![alt](src) — furniture, never prose
+_LINK = re.compile(r'\[[^\]]*\]\([^)]*\)')
+_MIN_PROSE = 60          # chars of real text before a line counts as the article
 
 
 class WebSourceConnector:
@@ -66,10 +68,12 @@ def _strip_nav(md: str) -> str:
     lines = body.splitlines()
     for i, line in enumerate(lines):
         stripped = line.strip()
-        if not stripped or _LINK_LINE.match(stripped):
+        # a markdown TABLE row is furniture too: Wikipedia opens with an image infobox,
+        # and the first strip stopped right on it (218 of 36,848 chars removed)
+        if not stripped or stripped.startswith('|') or _LINK_LINE.match(stripped):
             continue
-        # a line is the article once enough of it survives having its links removed
-        if len(re.sub(r'\[[^\]]*\]\([^)]*\)', '', stripped)) >= _MIN_PROSE:
+        # a line is the article once enough survives having its images and links removed
+        if len(_LINK.sub('', _IMAGE.sub('', stripped))) >= _MIN_PROSE:
             return "\n".join(lines[i:]).strip()
     return md.strip()
 

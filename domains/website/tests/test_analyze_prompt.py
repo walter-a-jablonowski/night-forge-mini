@@ -81,3 +81,25 @@ def test_pending_reason_is_rendered_when_there_is_no_new_input( tmp_path ):
                       history={'pending': '2 broken internal link(s)'}, metric_mods=[])
   assert '2 broken internal link(s)' in model.user     # the model is told WHY it ran
   assert '(none this pass)' in model.user              # ...and that there is no new input
+
+
+def test_past_findings_are_labelled_with_their_age( tmp_path ):
+  """Pass 5 of the long run restated a THREE-RUN-OLD finding as present tense and edited
+  on it — 'index.html references assets/plant-window.jpg which was never downloaded' —
+  while the same prompt carried broken_links=0 and the asset was on disk. Findings were
+  rendered under a bare 'RECENT FINDINGS:' with no age, so a stale observation reads
+  exactly like a current one."""
+  site_dir = tmp_path / 'site'
+  site_dir.mkdir(parents=True, exist_ok=True)
+  (site_dir / 'index.html').write_text('<html><head><title>x</title></head></html>',
+                                       encoding='utf-8')
+  model = RecordingModel()
+  analyze_mod.analyze(model, site=Site(site_dir), goal='g', constraints='', snippets=[],
+                      history={'findings': ['oldest thing', 'middle thing', 'newest thing']},
+                      metric_mods=[])
+
+  user = model.user
+  assert '3 runs ago' in user and '1 run ago' in user       # each carries its age
+  assert user.index('oldest thing') < user.index('newest thing')   # oldest first
+  # and the model is told what they are: history, not the current state
+  assert 'AS IT WAS' in user.upper() or 'not the current state' in user.lower()

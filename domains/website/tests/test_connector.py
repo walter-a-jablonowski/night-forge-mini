@@ -115,3 +115,29 @@ def test_an_all_links_page_still_captures_something( monkeypatch ):
   monkeypatch.setattr(conn_mod, '_read_url', lambda url, **kw: nav_only)
   snip = WebSourceConnector(['https://y.example/'], snippet_max=500).fetch(set())[0]
   assert snip['text'].strip()
+
+
+INFOBOX_SHAPED = """Title: Monstera deliciosa
+
+Markdown Content:
+*   [Main page](https://en.wikipedia.org/wiki/Main_Page "Visit the main page")
+
+| [![Image 1](https://thumb.wikimedia.org/a/b/Monstera.jpg)](https://upload.wikimedia.org/Monstera.jpg) |
+| --- | --- |
+| Scientific classification | Kingdom: Plantae | Family: Araceae |
+
+Monstera deliciosa, the Swiss cheese plant, is a species of flowering plant native to
+tropical forests of southern Mexico, popular as a houseplant for its large split leaves.
+"""
+
+
+def test_capture_skips_image_tables_too( monkeypatch ):
+  """The first strip only got past the MENU: on a real Wikipedia article it stopped at the
+  image infobox and removed 218 of 36,848 chars. A table of images is furniture as much as
+  a menu is."""
+  monkeypatch.setattr(conn_mod, '_read_url', lambda url, **kw: INFOBOX_SHAPED)
+  snip = WebSourceConnector(['https://x.example/'], snippet_max=300).fetch(set())[0]
+
+  assert snip['text'].startswith('Monstera deliciosa, the Swiss cheese plant')
+  assert 'Image 1' not in snip['text']
+  assert 'Scientific classification' not in snip['text']

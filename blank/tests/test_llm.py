@@ -110,3 +110,55 @@ def test_extract_json_requires_an_object():
   # surprise type that blows up in the caller
   with pytest.raises(LLMError):
     _extract_json('[1, 2, 3]')
+
+
+# --- a transient upstream 400 is not a parameter rejection -----------------
+
+class UpstreamError(Exception):
+  """What OpenRouter returns when the upstream it routed to fails: a 400 that says
+  nothing about our parameters. Seen 3 times live, always naming a provider."""
+  status_code = 400
+
+  def __init__( self ):
+    super().__init__("Error code: 400 - {'error': {'message': 'Provider returned error', "
+                     "'code': 400, 'metadata': {'provider_name': 'AtlasCloud'}}}")
+
+
+def test_a_transient_upstream_400_does_not_disable_structured_output():
+  """The bug this covers: any 400 was read as "this provider cannot take response_format"
+  and structured output was switched off for the wrapper's whole life. A flaky upstream
+  would silently degrade every later call in the run."""
+  seen = {'n': 0}
+
+  def handler( kw ):
+    seen['n'] += 1
+    if seen['n'] == 1:
+      raise UpstreamError()          # first attempt, schema sent, upstream is unhappy
+    return REPLY
+
+  w, calls = make_wrapper(handler)
+  schema = proposal_schema(['add_entry'])
+  assert w.complete_json('sys', 'usr', schema=schema) == {'finding': 'f', 'actions': []}
+  assert len(calls) == 2 and 'response_format' not in calls[1]   # retried plain
+
+  # ...but the NEXT call must try the schema again — nothing was learned about the parameter
+  w.complete_json('sys', 'usr', schema=schema)
+  assert 'response_format' in calls[2]
+
+
+def test_a_400_that_names_the_parameter_is_still_remembered():
+  class NamedRejection(Exception):
+    status_code = 400
+    def __init__( self ):
+      super().__init__("400: response_format is not supported by this model")
+
+  def handler( kw ):
+    if 'response_format' in kw:
+      raise NamedRejection()
+    return REPLY
+
+  w, calls = make_wrapper(handler)
+  schema = proposal_schema(['add_entry'])
+  w.complete_json('sys', 'usr', schema=schema)
+  w.complete_json('sys', 'usr', schema=schema)
+  assert all('response_format' not in c for c in calls[1:])      # learned, as before

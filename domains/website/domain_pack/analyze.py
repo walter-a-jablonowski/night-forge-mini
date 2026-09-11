@@ -196,6 +196,12 @@ def _stamp_edit_base(site: Site, actions: Any) -> None:
                 a["payload"].setdefault("base", base)
 
 
+def _ago(n: int) -> str:
+    """How old a finding is. Without it a three-run-old observation reads exactly like
+    a current one — which is how a fixed problem got "fixed" a second time."""
+    return "1 run ago" if n == 1 else f"{n} runs ago"
+
+
 def _render_context(goal: str, site_map: list[dict], snippets, history: dict[str, list],
                     total: int | None = None, assets: list[str] | None = None) -> str:
     head = "SITE MAP"
@@ -204,7 +210,9 @@ def _render_context(goal: str, site_map: list[dict], snippets, history: dict[str
     rows = "\n".join(f"- {e['path']}: {e['title'] or '(no title)'} ({e['size']} chars)"
                      for e in site_map) or "(empty site)"
     snips = "\n\n".join(f"[{s['id']} from {s['source']}]\n{s['text']}" for s in snippets)
-    recent = "\n".join(f"- {f}" for f in history.get("findings", [])) or "(none)"
+    findings = list(history.get("findings", []))
+    recent = "\n".join(f"- {_ago(len(findings) - i)}: {f}"
+                       for i, f in enumerate(findings)) or "(none)"
 
     parts = [f"GOAL: {goal}", f"{head}:\n{rows}"]
     if assets:
@@ -223,7 +231,10 @@ def _render_context(goal: str, site_map: list[dict], snippets, history: dict[str
         rows2 = "\n".join(f"- predicted {fmt(i['predicted'])} -> actual {fmt(i['actual'])}"
                           for i in impact)
         parts.append(f"YOUR PREDICTED vs ACTUAL metric impact (calibrate!):\n{rows2}")
-    parts.append(f"RECENT FINDINGS:\n{recent}")
+    parts.append("FINDINGS FROM PAST RUNS (oldest first). Each describes the site AS IT WAS "
+                 "at that time,\nNOT the current state — a problem named here may already be "
+                 "fixed. For what is true\nNOW, trust the SITE MAP and the METRIC above.\n"
+                 + recent)
     rejections = history.get("rejections", [])
     if rejections:
         rej = "\n".join(f"- {r['name']} {r['target']} — was proposed because: {r['rationale']}"
