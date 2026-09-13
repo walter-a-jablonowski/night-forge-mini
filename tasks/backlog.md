@@ -43,6 +43,8 @@ release that makes the last two legible and pays off their loose ends.
 6. website pack polish — [text](backlog/styles-ok-metric.md) (S; no metric notices a
    structurally broken stylesheet) · [text](backlog/metric-display-rounding.md) (XS;
    `goal_coverage=1e-16` reads as a bug).
+7. kb-pack-tests (S) — the second pack has no test directory at all, so the long-run §5 fix
+   applied to it is guarded by nothing. [text](backlog/kb-pack-tests.md)
 
 **0.4.0 — unattended operation.** The first second-writer feature together with
 sqlite-store, so the storage is designed around its first real consumer.

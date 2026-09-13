@@ -166,3 +166,29 @@ def test_a_400_that_names_the_parameter_is_still_remembered():
   w.complete_json('sys', 'usr', schema=schema)
   w.complete_json('sys', 'usr', schema=schema)
   assert all('response_format' not in c for c in calls[1:])      # learned, as before
+
+
+# --- the classifiers must hold against the REAL SDK exception --------------
+
+def _sdk_error( message: str ):
+  """The exception the openai SDK actually raises on a 400. Every other test here uses a
+  hand-rolled stand-in with `status_code` set as a CLASS attribute; the SDK sets it in
+  __init__ instead, so a stand-in would keep passing even if the real object never
+  carried it and both guards were dead in production."""
+  import httpx
+  from openai import BadRequestError
+  request = httpx.Request('POST', 'https://openrouter.ai/api/v1/chat/completions')
+  return BadRequestError(message, response=httpx.Response(400, request=request), body=None)
+
+
+def test_the_guards_recognise_the_real_openai_error_object():
+  from night_forge_mini.backends.http import _client_refused, _param_rejected
+
+  # verbatim from the long run: OpenRouter's upstream failed, our parameters were fine
+  transient = _sdk_error("Error code: 400 - {'error': {'message': 'Provider returned error', "
+                         "'code': 400, 'metadata': {'provider_name': 'AtlasCloud'}}}")
+  assert _client_refused(transient)          # retryable...
+  assert not _param_rejected(transient)      # ...and nothing to learn from it
+
+  named = _sdk_error('Error code: 400 - response_format is not supported by this model')
+  assert _client_refused(named) and _param_rejected(named)
