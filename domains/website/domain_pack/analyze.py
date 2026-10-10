@@ -95,9 +95,10 @@ def analyze(model, *, site: Site, goal: str, constraints: str, snippets: list[di
     # Metric measured at Analyze (before acting) — the config-activated metric modules.
     metric, errors = metrics_mod.measure_all(metric_mods, site, model=model, goal=goal)
     metric["incoming_new"] = len(snippets)
-    if errors:
-        finding = f"{finding} [metric errors: {'; '.join(errors)}]".strip()
-    return {"finding": finding, "actions": actions, "metric": metric, "model": model_label}
+    # Errors go in their OWN field, never into the finding: findings are fed to every later
+    # pass as history, and a quota error once put 1,500 chars of provider JSON there.
+    return {"finding": finding, "actions": actions, "metric": metric, "model": model_label,
+            "metric_errors": errors}
 
 
 def _constraints_block(constraints: str) -> str:
@@ -246,8 +247,11 @@ def _render_context(goal: str, site_map: list[dict], snippets, history: dict[str
         parts.append(f"RECENTLY FAILED ACTIONS (fix the cause or avoid):\n{fail}")
     pending = history.get("pending")
     if pending:
-        # a pass with no new external input: the site itself has something outstanding
+        # a pass with no new external input: the site itself has something outstanding —
+        # broken links, or a metric below its target. The latter usually needs research,
+        # so the tools are named rather than steering the model to the site alone.
         parts.append(f"WHY YOU ARE RUNNING (no new external content this pass): {pending}.\n"
-                     "Finish that work now, from what the site already contains.")
+                     "Do that work now, from what the site contains and what your tools "
+                     "can find.")
     parts.append(f"NEW EXTERNAL CONTENT:\n{snips or '(none this pass)'}")
     return "\n\n".join(parts)

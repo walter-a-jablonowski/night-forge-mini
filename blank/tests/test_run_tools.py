@@ -11,13 +11,24 @@ REPLY = '{"finding": "f", "actions": []}'
 SCHEMA = proposal_schema(['add_entry'])
 
 
-def tool_call( name, arguments, id_='tc1' ):
-  return SimpleNamespace(id=id_, function=SimpleNamespace(name=name, arguments=arguments))
+def tool_call( name, arguments, id_='tc1', **extra ):
+  """`extra` = provider fields the SDK keeps on the object, e.g. Gemini's `extra_content`."""
+  return {'id': id_, 'type': 'function', 'function': {'name': name, 'arguments': arguments},
+          **extra}
 
 
-def response( content=None, tool_calls=None ):
-  msg = SimpleNamespace(content=content, tool_calls=tool_calls)
-  return SimpleNamespace(choices=[SimpleNamespace(message=msg)])
+def response( content=None, tool_calls=None, **extra ):
+  """A REAL `ChatCompletion`, not a stand-in: a stand-in carries only the fields the test
+  author thought of, so it can neither hold a provider's extra state nor prove that the
+  code reads the object the SDK actually returns (see long-run §7)."""
+  from openai.types.chat import ChatCompletion
+  msg = {'role': 'assistant', 'content': content, **extra}
+  if tool_calls:
+    msg['tool_calls'] = tool_calls
+  return ChatCompletion.model_validate({
+    'id': 'r', 'object': 'chat.completion', 'created': 0, 'model': 'm',
+    'choices': [{'index': 0, 'finish_reason': 'tool_calls' if tool_calls else 'stop',
+                 'message': msg}]})
 
 
 def make_wrapper( responses ):
@@ -246,3 +257,22 @@ def test_a_transient_upstream_400_in_the_TOOL_LOOP_is_retried():
   assert out == {'finding': 'f', 'actions': []}          # the pass survives
   assert state['n'] == 2                                 # retried exactly once
   assert [s['tool'] for s in w.take_tool_trace()] == ['provider_retry']   # and it is visible
+
+
+def test_provider_state_on_the_assistant_turn_is_echoed_back():
+  """Gemini 3 attaches a `thought_signature` to every tool call and REQUIRES it back on the
+  next request — measured live: `400 Function call is missing a thought_signature` at step
+  2, so no agentic pass could run on Gemini. The turn used to be rebuilt field by field,
+  which kept only what we knew about; OpenRouter's reasoning details are the same shape."""
+  signature = {'google': {'thought_signature': 'SIG'}}
+  w, calls = make_wrapper([
+    response(tool_calls=[tool_call('read_entry', '{"id": "a"}', extra_content=signature)],
+             reasoning_details=[{'type': 'reasoning.encrypted', 'data': 'R'}]),
+    response(content=REPLY),
+  ])
+  w.run_tools('sys', 'usr', tools=[read_tool()], schema=SCHEMA)
+
+  turn = [m for m in calls[1]['messages'] if m.get('role') == 'assistant'][0]
+  assert turn['tool_calls'][0]['extra_content'] == signature
+  assert turn['reasoning_details'] == [{'type': 'reasoning.encrypted', 'data': 'R'}]
+  assert turn['content'] == '' and 'annotations' not in turn

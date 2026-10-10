@@ -16,6 +16,11 @@ seam moved it); no pack change.
 - the `tool_call` span keeps the honest full size in `chars` and records what actually
   went into the prompt as `sent` — a trimmed prompt must not become a trimmed record.
 
+**2026-10-10: levers 2+3 now also hold on the Claude Code backend.** They had lived only in
+`backends/http.py`, so the CLI path ignored them. They moved to `tools/pass_budget.py`,
+and the MCP server enforces them per turn. See `tasks/v done/261010 - claude-code-pass-bounds.md`.
+Lever 1 cannot be done there (the agent owns its message list).
+
 **Measured effect on the three real runs: 6%, 0%, 0%.** Both are guardrails, not the fix:
 no observed pass reached the 40k budget, and only one had a duplicate call. They stop the
 problem getting worse as the site grows; they do not make it better today. Said plainly

@@ -146,6 +146,22 @@ class Store:
         vals = [r.payload.get("metric") for r in self.of_type(ANALYSIS)]
         return [m for m in vals if isinstance(m, dict) and m][-n:]
 
+    def metric_runs(self) -> list[dict]:
+        """Every recorded metric with whether its run had a CHANCE to move the next one,
+        oldest first — the input for `Targets.check`. A run had a chance when it proposed
+        nothing (the model judged the work done: that IS evidence) or ran at least one
+        action successfully. A run whose actions all failed or are still held changed
+        nothing, so the metric after it says nothing about convergence."""
+        recs = self.all()
+        ok_runs = {r.run_id for r in recs
+                   if r.type == OUTCOME and r.payload.get("status") == "ok"}
+        empty_runs = {r.run_id for r in recs
+                      if r.type == PROPOSAL and not r.payload.get("actions")}
+        return [{"run_id": r.run_id,
+                 "metric": r.payload.get("metric") if isinstance(r.payload.get("metric"), dict) else {},
+                 "had_chance": r.run_id in ok_runs or r.run_id in empty_runs}
+                for r in recs if r.type == ANALYSIS]
+
     def recent_rejections(self, n: int) -> list[dict]:
         """The last n human-rejected actions — the strongest teaching signal there is."""
         proposed = self.proposed_actions()

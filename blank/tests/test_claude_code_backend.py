@@ -231,3 +231,28 @@ def test_a_turn_without_tools_names_the_command_it_tried( tmp_path ):
   with pytest.raises(LLMError) as e:
     b.run_tools('sys', 'usr', tools=[read_tool()])
   assert 'night_forge_mini.mcp_server' in str(e.value)     # what it tried to start
+
+
+# --- the pass bounds travel to the server -----------------------------------
+
+def test_the_pass_bounds_reach_the_tool_server( tmp_path ):
+  """They used to be swallowed by **kwargs, so `analyze_tool_steps` meant nothing on this
+  backend. The agent owns the loop, so the server is where they can be enforced."""
+  b = backend(tmp_path, stream(init(), final(PROPOSAL)))
+  b.run_tools('sys', 'usr', tools=[read_tool()], max_steps=3, result_cap=500,
+              result_budget=900)
+  args = json.loads(b.last_cmd[b.last_cmd.index('--mcp-config') + 1])['mcpServers'][MCP_NAME]['args']
+  flags = dict(zip(args[3::2], args[4::2]))
+  assert flags == {'--max-calls': '3', '--result-cap': '500', '--result-budget': '900'}
+
+
+def test_a_repeat_answered_from_the_pass_cache_is_marked_in_the_span( tmp_path ):
+  from night_forge_mini.tools.pass_budget import PassBudget
+  pointer = PassBudget(seen={('read_page', '{"path": "a"}'): 9}).repeat('read_page', {'path': 'a'})
+  b = backend(tmp_path, stream(init(),
+                               tool_use('t1', 'read_page', {'path': 'a'}), tool_result('t1', 'BODY'),
+                               tool_use('t2', 'read_page', {'path': 'a'}), tool_result('t2', pointer),
+                               final(PROPOSAL)))
+  b.run_tools('sys', 'usr', tools=[read_tool()])
+  spans = b.take_tool_trace()
+  assert 'cached' not in spans[0] and spans[1]['cached'] is True

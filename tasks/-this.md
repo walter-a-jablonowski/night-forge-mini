@@ -59,14 +59,26 @@ The blank system plus pne domain pack is merged in a new folder to get a running
   - [ ] left over (optional)
     - [text](backlog/claude-code-backend-refinements.md)
     - maybe [text](backlog/analyze-context-amplification.md)
-  
+
 State: usable supervised, on a low-stakes artifact. No unattended, and no on anything you'd mind being wrong
        The guards are genuinely good — but the reason I trust them less than the count suggests is that every single live run found a new hole
+
+- Test run
+
+  - When Gemini resets (should we do that or obsolete ?)
+    - [ ] No verified live: the "stopped improving" and "can't measure" stops (tests only), a full analyze pass on Gemini (free quota is 5 requests/min and 20/day per model), and the retry on a passing 400 error.
+  - [ ] Did we check the kb pack as well? Should we?
+
+- [ ] We may need to improve LLM implementation so that Claude, Gemini and OpenRouter can be used interchangeably as far as possible.
+
+  From my side questions: see tasks/backlog
+
+- [ ] next useful steps
+  - claude-code-backend-refinements §5 (count the tool calls a pass makes) before any scheduler-daemon
 
 - [x] Anything left from the test run that we should do?
 
 - [ ] Test run looking for errors?
-- [ ] Make an error check?
 - [ ] Make some usage overview: started in Readme
 - [ ] has nice /tasks setup with CLAUDE.md rules, move
 
@@ -123,7 +135,7 @@ Done
       file kind). Leftover idea split out: [text](backlog/styles-ok-metric.md)
     - all resolved files archived to tasks/v done/ (260904/260905). Leftovers kept as new
       backlog items: [text](backlog/styles-ok-metric.md), [text](backlog/salvage-partial-model-json.md),
-      [text](backlog/run-when-metric-below-target.md), [text](backlog/metric-display-rounding.md)
+      [text](v%20done/run-when-metric-below-target.md), [text](backlog/metric-display-rounding.md)
     - [x] [text](v%20done/260904%20-%20website-analyze-prompt-tools.md) — model calls actions as tools — FIXED, rerun run-9d177565 clean
     - [-] ~~failed analyze eats the input~~ — WRONG, no such bug: `seen_snippet_ids` already
       counts only runs that reached `analysis`, so a crashed run's snippets are re-offered
@@ -168,7 +180,7 @@ Done
   - /domains: for specific use cases
   - Installation: One domain merged with one domain pack on disk
   - /tasks/-this.md: my current task file
-    - currently developing tools and website domain pack (stopped for reviewing the main app) 
+    - currently developing tools and website domain pack (stopped for reviewing the main app)
   - /tasks/backog: the backlog
 
   Review this system. Is it good as it is or would you improve something? No details or trivial improvements, focus on the main parts. Focus in /blank, the domain packs are less important and still in development.
@@ -176,7 +188,7 @@ Done
 - [x] Beside the gaps we fixed how do you like this system in principle? Is the basic app principle what you would implement if you had to start a similar system from scratch or would you do a different system or would you change only parts of it?
 
 - tasks/review
-  
+
   - [x] `structured-output.md`   | S      | anytime — do first, de-risks the next one                                                           |
   - [x] `agentic-analyze.md`     | M→L    | the one real architectural evolution; after structured-output                                       |
 
@@ -285,8 +297,8 @@ Is the system made in a modular way so that we could specialize it just by addin
 
  --
 
-Make a new file idea_2.md. Add those of your suggestions that we must do in v1. Write optional features to tasks/backlog one file per feature.                                                                                                                                    
-When there are features that is too big for v1 (large effort) we defer it to a later version but prepare v1 to be able to add it later as easy as possible. We want a v1 that is small enought to implement it now, but it should be a working system.    
+Make a new file idea_2.md. Add those of your suggestions that we must do in v1. Write optional features to tasks/backlog one file per feature.
+When there are features that is too big for v1 (large effort) we defer it to a later version but prepare v1 to be able to add it later as easy as possible. We want a v1 that is small enought to implement it now, but it should be a working system.
 
  --
 

@@ -16,10 +16,12 @@ does not make it fail but makes it invent. Diagnostics go to stderr.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from typing import Any, TextIO
 
+from .tools.pass_budget import RESULT_BUDGET, RESULT_CAP, PassBudget
 from .tools.registry import Tool
 
 PROTOCOL_VERSION = "2025-06-18"     # used only when the client names none
@@ -36,24 +38,51 @@ def tool_defs(tools: list[Tool]) -> list[dict]:
             for t in tools]
 
 
-def call_tool(tools: dict[str, Tool], name: str, args: dict) -> dict:
-    """Run one tool. A failure is reported as an MCP error RESULT, not a protocol error:
-    the agent should see what went wrong and be able to correct itself, exactly as the
-    in-process backend lets a tool failure become an error string."""
-    tool = tools.get(name)
-    if tool is None:
-        return {"content": [{"type": "text",
-                             "text": f"unknown tool {name}; available: "
-                                     f"{', '.join(sorted(tools)) or '(none)'}"}],
-                "isError": True}
-    try:
-        return {"content": [{"type": "text", "text": str(tool.run(**args))}]}
-    except Exception as e:  # noqa: BLE001 - the agent gets the reason and may retry
-        return {"content": [{"type": "text", "text": f"error: {type(e).__name__}: {e}"}],
-                "isError": True}
+class ToolPass:
+    """One analyze pass as this server sees it. The process lives exactly one CLI turn, so
+    its state IS the pass state — which lets it apply the same hygiene the HTTP backend
+    applies inside its own loop (`PassBudget`), plus the step bound the pack asked for.
+
+    `max_calls` counts tool EXECUTIONS, not model turns: this side of the protocol cannot
+    see turns, so a turn that reads three files in parallel spends three. A repeat answered
+    from the pass cache spends nothing — it costs the model a sentence, not a read.
+    None = unbounded, for running the server by hand."""
+
+    def __init__(self, tools: list[Tool], max_calls: int | None = None,
+                 budget: PassBudget | None = None):
+        # Offer only what is actually usable, exactly as the in-process backend does: a
+        # keyed tool with no key must not appear in the list at all. Advertising one the
+        # agent then cannot call wastes a step and reads to the model as a broken tool
+        # rather than an absent one.
+        self.tools = {t.name: t for t in tools if t.available()}
+        self.calls_left = max_calls
+        self.budget = budget or PassBudget()
+
+    def call(self, name: str, args: dict) -> dict:
+        """Run one tool. A failure is reported as an MCP error RESULT, not a protocol
+        error: the agent should see what went wrong and be able to correct itself, exactly
+        as the in-process backend lets a tool failure become an error string."""
+        tool = self.tools.get(name)
+        if tool is None:
+            return _text(f"unknown tool {name}; available: "
+                         f"{', '.join(sorted(self.tools)) or '(none)'}", error=True)
+        note = self.budget.repeat(name, args)
+        if note is not None:
+            return _text(note)
+        if self.calls_left is not None:
+            if self.calls_left <= 0:
+                return _text("tool budget exhausted for this pass - stop reading and return "
+                             "the final JSON proposal now", error=True)
+            self.calls_left -= 1
+        try:
+            result = str(tool.run(**args))
+        except Exception as e:  # noqa: BLE001 - the agent gets the reason and may retry
+            return _text(f"error: {type(e).__name__}: {e}", error=True)
+        self.budget.remember(name, args, len(result))
+        return _text(self.budget.take(result))
 
 
-def handle(message: dict, tools: dict[str, Tool]) -> dict | None:
+def handle(message: dict, tool_pass: ToolPass) -> dict | None:
     """One JSON-RPC request -> one response, or None for a notification (which must NOT
     be answered; a response to a notification is a protocol error)."""
     method = message.get("method", "")
@@ -72,25 +101,20 @@ def handle(message: dict, tools: dict[str, Tool]) -> dict | None:
             "serverInfo": SERVER_INFO,
         })
     if method == "tools/list":
-        return _ok(mid, {"tools": tool_defs(list(tools.values()))})
+        return _ok(mid, {"tools": tool_defs(list(tool_pass.tools.values()))})
     if method == "tools/call":
         params = message.get("params") or {}
         args = params.get("arguments")
-        return _ok(mid, call_tool(tools, str(params.get("name") or ""),
-                                  args if isinstance(args, dict) else {}))
+        return _ok(mid, tool_pass.call(str(params.get("name") or ""),
+                                       args if isinstance(args, dict) else {}))
     if method == "ping":
         return _ok(mid, {})
     return {"jsonrpc": "2.0", "id": mid,
             "error": {"code": -32601, "message": f"method not found: {method}"}}
 
 
-def serve(stdin: TextIO, stdout: TextIO, tools: list[Tool]) -> None:
+def serve(stdin: TextIO, stdout: TextIO, tool_pass: ToolPass) -> None:
     """The loop. Line-delimited JSON in, line-delimited JSON out, until stdin closes."""
-    # Offer only what is actually usable, exactly as the in-process backend does: a keyed
-    # tool with no key must not appear in the list at all. Advertising one the agent then
-    # cannot call wastes a step and reads to the model as a broken tool rather than an
-    # absent one.
-    by_name = {t.name: t for t in tools if t.available()}
     for line in stdin:
         line = line.strip()
         if not line:
@@ -101,7 +125,7 @@ def serve(stdin: TextIO, stdout: TextIO, tools: list[Tool]) -> None:
             continue                                  # not ours to interpret; stay quiet
         if not isinstance(message, dict):
             continue
-        response = handle(message, by_name)
+        response = handle(message, tool_pass)
         if response is not None:
             stdout.write(json.dumps(response) + "\n")
             stdout.flush()
@@ -111,19 +135,32 @@ def _ok(mid: Any, result: dict) -> dict:
     return {"jsonrpc": "2.0", "id": mid, "result": result}
 
 
+def _text(text: str, error: bool = False) -> dict:
+    result: dict[str, Any] = {"content": [{"type": "text", "text": text}]}
+    if error:
+        result["isError"] = True
+    return result
+
+
 def main(argv: list[str] | None = None) -> None:
-    """Build the deploy's pack and serve its analyze tools.
+    """Build the deploy's pack and serve its analyze tools for one pass.
 
     The deploy directory may be given as the first argument: an agent backend runs the CLI
     in an EMPTY working directory (so it finds no project to read as context), which means
-    this subprocess cannot rely on inheriting a useful cwd.
+    this subprocess cannot rely on inheriting a useful cwd. The pass bounds come from the
+    backend, which got them from the pack — the same numbers the HTTP backend enforces.
     """
     import os
     from .config import load
 
-    argv = sys.argv[1:] if argv is None else argv
-    if argv:
-        os.chdir(argv[0])
+    ap = argparse.ArgumentParser(prog="night_forge_mini.mcp_server")
+    ap.add_argument("deploy", nargs="?", default="")
+    ap.add_argument("--max-calls", type=int, default=None)
+    ap.add_argument("--result-cap", type=int, default=RESULT_CAP)
+    ap.add_argument("--result-budget", type=int, default=RESULT_BUDGET)
+    opts = ap.parse_args(sys.argv[1:] if argv is None else argv)
+    if opts.deploy:
+        os.chdir(opts.deploy)
     sys.path.insert(0, os.getcwd())                   # the merged deploy's domain_pack
     import domain_pack                                # noqa: PLC0415 - deploy-local
 
@@ -131,7 +168,9 @@ def main(argv: list[str] | None = None) -> None:
     tools = list(pack.analyze_tools)
     if not tools:
         print("night-forge-mini MCP: the pack offers no analyze tools", file=sys.stderr)
-    serve(sys.stdin, sys.stdout, tools)
+    serve(sys.stdin, sys.stdout,
+          ToolPass(tools, max_calls=opts.max_calls,
+                   budget=PassBudget(cap=opts.result_cap, remaining=opts.result_budget)))
 
 
 if __name__ == "__main__":

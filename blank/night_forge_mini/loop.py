@@ -15,6 +15,7 @@ from .git_sync import Git
 from .pack import Pack, sanitize_actions
 from .records import Record, new_id, now_iso, INPUT, ANALYSIS, TOOL_CALL, PROPOSAL
 from .store import Store
+from .targets import Targets
 
 
 class Engine:
@@ -32,6 +33,7 @@ class Engine:
                              f"(known: {', '.join(backends.names())})")
         self.model = build(cfg)
         self.git = Git.from_config(cfg)
+        self.targets = Targets.from_config(cfg)
 
     # --- run-once ----------------------------------------------------------
 
@@ -40,7 +42,19 @@ class Engine:
         connector = self.pack.connector
         seen = self.store.seen_snippet_ids(connector.name)
         snippets = connector.fetch(seen)
-        pending = self._pending_work() if not snippets else None
+        pending = None
+        if not snippets:
+            # No new input: a pass needs another reason. Unfinished business in the
+            # artifact first (integrity outranks score), then the metric targets — which
+            # are also where the loop learns it may stop. New input is never refused here:
+            # processing what the connector brings is its contract.
+            pending = self._pending_work()
+            if not pending:
+                verdict = self.targets.check(self.store.metric_runs())
+                if verdict.state in ("met", "blind", "converged"):
+                    return {"status": "noop", "stop": verdict.state, "reason": verdict.reason}
+                if verdict.state == "unmet":
+                    pending = verdict.reason
         if not snippets and not pending:
             return {"status": "noop", "reason": "no new snippets"}
         if pending and not self.store.last_run_made_progress():
@@ -80,10 +94,15 @@ class Engine:
             result = {}
         finding = str(result.get("finding") or "")
         metric_value = result.get("metric") if isinstance(result.get("metric"), dict) else {}
+        # a metric that failed to measure is reported beside the finding, not inside it —
+        # findings become the next pass's history, an error message must not
+        metric_errors = [str(e)[:300] for e in result.get("metric_errors") or []]
+        payload = {"finding": finding, "metric": metric_value,
+                   "goal": self.pack.goal, "model": result.get("model", "")}
+        if metric_errors:
+            payload["metric_errors"] = metric_errors
         analysis = self.store.append(Record(run_id=run_id, domain=domain, type=ANALYSIS,
-                                            start_ts=start, end_ts=now_iso(),
-                                            payload={"finding": finding, "metric": metric_value,
-                                                     "goal": self.pack.goal, "model": result.get("model", "")}))
+                                            start_ts=start, end_ts=now_iso(), payload=payload))
         # If analyze used the agentic tool loop, log each read as a span under the analysis.
         for span in self.model.take_tool_trace():
             self.store.append(Record(run_id=run_id, domain=domain, type=TOOL_CALL,
@@ -125,7 +144,7 @@ class Engine:
             git_results.append(gr)
 
         return {"status": "ok", "run_id": run_id, "captured": len(snippets),
-                "finding": finding, "metric": metric_value,
+                "finding": finding, "metric": metric_value, "metric_errors": metric_errors,
                 "model": result.get("model", ""), "ran": ran, "pending": pending,
                 "git": git_results}
 

@@ -22,7 +22,7 @@ effectively **infinite** — there is always another result — so the `seen_ids
 bounding runs and only the gate does.
 
 Before building this, the loop needs a stop condition it does not have today:
-`backlog/run-when-metric-below-target.md` (goal-reached / metric-target stop). Building search
+`v done/261010 - run-when-metric-below-target.md` (goal-reached / metric-target stop). Building search
 mode first would produce a system that runs forever by construction.
 
 ## If built anyway

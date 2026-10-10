@@ -43,15 +43,19 @@ release that makes the last two legible and pays off their loose ends.
 6. website pack polish — [text](backlog/styles-ok-metric.md) (S; no metric notices a
    structurally broken stylesheet) · [text](backlog/metric-display-rounding.md) (XS;
    `goal_coverage=1e-16` reads as a bug).
-7. kb-pack-tests (S) — the second pack has no test directory at all, so the long-run §5 fix
-   applied to it is guarded by nothing. [text](backlog/kb-pack-tests.md)
+7. ~~kb-pack-tests~~ — DONE 2026-10-10 (6 tests, incl. one offline Engine pass).
+   [text](v%20done/261010%20-%20kb-pack-tests.md)
+8. ~~claude-code-pass-bounds~~ — DONE 2026-10-10, found live: the CLI path ignored
+   step/result bounds and the repeat-read guard. [text](v%20done/261010%20-%20claude-code-pass-bounds.md)
+9. ~~http-tool-loop-provider-state~~ — DONE 2026-10-10, found live: no agentic pass could
+   run on Gemini 3 (thought_signature dropped). [text](v%20done/261010%20-%20http-tool-loop-provider-state.md)
 
 **0.4.0 — unattended operation.** The first second-writer feature together with
 sqlite-store, so the storage is designed around its first real consumer.
 
-1. run-when-metric-below-target (M) — **the prerequisite for everything else here.** The
-   metric is measured every run and compared to nothing, so the loop cannot say "done".
-   Do not ship a daemon without it. [text](backlog/run-when-metric-below-target.md)
+1. ~~run-when-metric-below-target~~ — DONE 2026-10-10: `metric_targets` trigger + three
+   stops (goal reached · stopped improving · cannot measure), live-verified to a
+   "goal reached" stop. [text](v%20done/261010%20-%20run-when-metric-below-target.md)
 2. scheduler-daemon (S) — the realistic unattended loop; the first candidate second
    writer. [text](backlog/run-triggers/scheduler-daemon.md)
 3. approval-ui (S read-only) — web inbox over the log; the other candidate second writer,
@@ -112,4 +116,5 @@ git-integration · website-domain-pack (phases 0-2) · llm-json-retry ·
 run-on-internal-state · hard-constraints-bypassable-by-action-choice ·
 website-analyze-prompt-tools · write-actions-accept-wrong-file-shape ·
 json-parse-failures-must-be-retryable · website-action-precondition-confusion (no fix
-needed) · claude-code-backend
+needed) · claude-code-backend · kb-pack-tests · claude-code-pass-bounds ·
+http-tool-loop-provider-state · run-when-metric-below-target

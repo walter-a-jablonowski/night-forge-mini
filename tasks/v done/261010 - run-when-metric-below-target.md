@@ -1,5 +1,45 @@
 # Run (and stop) on the metric, not only on input
 
+**DONE 2026-10-10.** Built as proposed below, with the differences that live testing forced.
+
+| piece | where |
+|---|---|
+| `Targets` / `Verdict`: none · met · blind · converged · unmet | `blank/night_forge_mini/targets.py` |
+| `Store.metric_runs()`: metric + `had_chance` per run | `store.py` |
+| trigger + stop on the **no-input path only** (new input always runs) | `loop.py` |
+| `STOP - <reason>` in `run-once` | `cli.py` |
+| config `metric_targets` (number = at least, `{"max": n}` = at most), `convergence_runs` | website config, `config.example.json`, `blank/README.md` |
+
+Decisions:
+- **order:** `pending_work` (integrity) → targets. `met` before `converged`, as specced.
+- **anti-spin** still guards the metric trigger: a pass that changed nothing is not repeated.
+- **gain is capped at the bound**, so a met metric that keeps rising (seo_basics) cannot hide
+  a stalled one.
+- **one run stale**, as proposed: the last recorded metric decides. Costs at most one pass.
+
+Found live, fixed the same day:
+1. **False "stopped improving".** v1 treated a missing measurement as no movement. The judge
+   hit Gemini's 20/day quota in 2 of 3 passes, and the loop stopped while the site grew
+   3 → 5 pages. Now targets use the LAST MEASURED value, convergence needs real measurements
+   N chance-runs apart, and a target unmeasured for N runs stops the loop as **blind**
+   ("cannot measure — fix the metric"), so a broken judge cannot make it run forever.
+   Pinned as `test_missing_measurements_are_not_a_plateau`.
+2. **Metric errors polluted history.** The website pack appended errors to the `finding`,
+   which becomes "FINDINGS FROM PAST RUNS". A quota error put ~1,500 chars of provider JSON
+   into every later prompt. Now an optional `metric_errors` field on the analyze result is
+   recorded on the analysis record and printed by the CLI, and never fed back.
+3. The website `WHY YOU ARE RUNNING` line said "from what the site already contains", which
+   steers a below-target pass away from research. Now it names the tools.
+
+**Verified live** (`try/website`, Claude Code analyze + Gemini judge, target 9.5): last known
+9.0 → no-input pass ran, added a page → measured 10.0 → next run-once: `STOP - goal
+reached: goal_coverage=10.0 (≥ 9.5)`. Site: 7 pages, 0 broken links, repo clean.
+Tests: 26 new (`test_targets.py`) + 1 engine (metric errors).
+
+Not verified live: `blind` and `converged` stops (unit- and engine-tested only).
+Observation: `goal_coverage` is lenient. 9.0 on a 3-page site for this goal, so a target
+of 8 stops after one pass. Targets need tuning per goal; that's operator data.
+
 Split out of `run-on-internal-state.md` (done 2026-09-04, see `tasks/v done/`), which built
 option 1 — the pack-declared `pending_work` signal — and left options 2 and 3 unbuilt.
 

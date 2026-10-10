@@ -293,3 +293,20 @@ def test_fake_backend_refuses_to_answer_instead_of_inventing( tmp_path ):
     FakeBackend().complete_json('sys', 'usr')
   with pytest.raises(LLMError):
     FakeBackend().run_tools('sys', 'usr', tools=[])
+
+
+def test_metric_errors_are_recorded_beside_the_finding_not_in_it( tmp_path ):
+  """Findings are the next pass's history. A judge quota error used to be appended to the
+  finding, putting 1,500 chars of provider JSON into every later prompt."""
+  items = [{'id': 's1', 'text': 'x', 'source': 'x'}]
+
+  def analyze(model, *, goal, snippets, history):
+    return {'finding': 'clean', 'metric': {'pages': 3}, 'actions': [],
+            'metric_errors': ['goal_coverage: RateLimitError: ' + 'X' * 1000]}
+
+  eng = make_engine(tmp_path, analyze, items)
+  r = eng.run_once()
+  assert r['finding'] == 'clean'
+  assert eng.store.recent_findings(5) == ['clean']
+  rec = eng.store.of_type(ANALYSIS)[-1].payload
+  assert rec['metric_errors'][0].startswith('goal_coverage') and len(rec['metric_errors'][0]) <= 300

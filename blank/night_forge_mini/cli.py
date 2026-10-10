@@ -147,7 +147,8 @@ def _repl(eng: Engine) -> int:
 def _run_once(eng: Engine) -> int:
     r = eng.run_once()
     if r["status"] == "noop":
-        print(f"nothing to do: {r['reason']}")
+        # a metric-target stop is an answer, not an absence of work — say which one
+        print(f"STOP - {r['reason']}" if r.get("stop") else f"nothing to do: {r['reason']}")
         return 0
     m = r["metric"] or {}
     metric_str = "  ".join(f"{k}={v}" for k, v in m.items()) if m else "(none)"
@@ -155,6 +156,8 @@ def _run_once(eng: Engine) -> int:
     print(f"captured   : {r['captured']} new artifact(s)")
     print(f"analysis   : {r['finding']}")
     print(f"metric     : {metric_str}")
+    for err in r.get("metric_errors") or []:
+        print(f"  not measured: {err[:160]}")
     print("proposal   :")
     for item in r["ran"]:
         a = item["action"]

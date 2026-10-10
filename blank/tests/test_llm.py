@@ -175,7 +175,10 @@ def _sdk_error( message: str ):
   hand-rolled stand-in with `status_code` set as a CLASS attribute; the SDK sets it in
   __init__ instead, so a stand-in would keep passing even if the real object never
   carried it and both guards were dead in production."""
-  import httpx
+  try:
+    import httpx2 as httpx   # openai >= 3 moved to httpx2; the response must be ITS type
+  except ImportError:
+    import httpx
   from openai import BadRequestError
   request = httpx.Request('POST', 'https://openrouter.ai/api/v1/chat/completions')
   return BadRequestError(message, response=httpx.Response(400, request=request), body=None)

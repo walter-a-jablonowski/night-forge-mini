@@ -1,5 +1,13 @@
 # kb pack has no tests
 
+**DONE 2026-10-10.** `domains/kb/tests/test_kb_pack.py`, 6 tests, all five scope rows plus
+the gate's hard floor on this pack (edit_entry allow-listed but held without git). Verified
+by mutation: reverting the §5 header in `kb/domain_pack/analyze.py` fails the age test.
+The pack loads as `kb_domain_pack` (see `tests/conftest.py`): the documented command
+collects both domains in one session and both packs are named `domain_pack`, so a plain
+import would have silently tested the website pack twice. Test command in `CLAUDE.md`
+updated. 167 -> 173 tests.
+
 **Size: S.** `domains/kb/` ships `config.json`, `data/`, `domain_pack/`, `README.md` — and
 no `tests/`. The website pack has 40+.
 

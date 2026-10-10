@@ -83,7 +83,23 @@ tool is one file `tools/MY_TOOL.py`; a complex tool is its own package `tools/MY
 
 ## Config ownership
 - `config.json` (deploy root) = operator settings: `provider`/`providers`, `paths`,
-  connector params/creds, the **`allow_list`** (which actions may auto-run here), `recent_runs`.
+  connector params/creds, the **`allow_list`** (which actions may auto-run here), `recent_runs`,
+  and the optional **`metric_targets`** (below).
+
+## When the loop runs, and when it stops
+A pass runs when the connector brings **new input**. Without new input it needs a reason:
+1. the pack's `pending_work()` reports unfinished business in the artifact (e.g. broken links),
+2. or a **metric target** is unmet (`"metric_targets": {"goal_coverage": 8}`; number = at
+   least, `{"max": n}` = at most).
+
+The same targets are the stop condition — `run-once` prints `STOP - …` with one of two reasons:
+- **goal reached** — every target met on the last recorded metric,
+- **stopped improving** — no targeted metric moved toward its target over the last
+  `convergence_runs` passes (default 3) that had a chance to change something.
+
+A pass on reason 1 or 2 that changed nothing is not repeated (anti-spin) until new input
+arrives. The metric used is the one recorded by the previous pass (one run stale: measuring
+fresh would cost a judge call just to decide whether to think).
 - The pack code owns the domain definition (goal, metric, connector impl, actions). The pack
   declares each action's honest reversibility; your `allow_list` decides what auto-runs.
 

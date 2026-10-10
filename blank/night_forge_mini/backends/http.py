@@ -23,10 +23,10 @@ from __future__ import annotations
 import json
 import os
 import re
-from dataclasses import dataclass, field
 from typing import Any
 
 from ..records import now_iso
+from ..tools.pass_budget import RESULT_BUDGET, RESULT_CAP, PassBudget
 from ..tools.registry import Tool
 from .base import LLMError, _extract_json
 
@@ -37,31 +37,6 @@ _JSON_FIX = ("Your previous reply was not valid JSON ({error}). Send the SAME pr
              "again as STRICT JSON only - no prose, no code fences, no trailing commas, "
              "and escape every quote and newline inside string values.")
 
-
-
-@dataclass
-class _ToolBudget:
-    """One agentic pass's result budget. `cap` bounds a single result, `remaining` the sum
-    of all of them; `seen` maps an already-answered call to the size it returned.
-
-    Both exist because a result is not paid for once: every later step resends the whole
-    conversation, so one big read is billed again on each of them (measured 4-6x). The sum
-    is also what decides whether a long pass still fits in the window at all."""
-    cap: int
-    remaining: int
-    seen: dict[tuple[str, str], int] = field(default_factory=dict)
-
-    def take(self, result: str) -> str:
-        """What of `result` may go into the prompt — trimmed, and SAID to be trimmed, so
-        the model knows it is looking at part of a file rather than a short one."""
-        allowed = min(self.cap, max(self.remaining, 0))
-        if len(result) <= allowed:
-            self.remaining -= len(result)
-            return result
-        dropped = len(result) - allowed
-        note = f"\n… trimmed: {dropped:,} more characters (per-pass result budget reached)"
-        self.remaining -= allowed
-        return result[:max(allowed - len(note), 0)] + note
 
 
 class HttpBackend:
@@ -84,8 +59,8 @@ class HttpBackend:
     # The agentic call site: a bounded READ-ONLY tool loop ending in the same JSON proposal.
     def run_tools(self, system: str, user: str, tools: list[Tool],
                   schema: dict | None = None, max_steps: int = 6,
-                  result_cap: int = 16_000,
-                  result_budget: int = 40_000) -> dict[str, Any]:
+                  result_cap: int = RESULT_CAP,
+                  result_budget: int = RESULT_BUDGET) -> dict[str, Any]:
         usable = {t.name: t for t in tools if t.available()}
         messages = _messages(system, user)
         if not usable:  # nothing to offer (e.g. keys missing) -> plain structured call
@@ -95,7 +70,7 @@ class HttpBackend:
         # result is not paid for once but once per remaining step — measured at 4-6x on the
         # website deploy. `result_cap` bounds one result; this bounds the SUM, which is what
         # decides whether a long pass still fits at all.
-        budget = _ToolBudget(cap=result_cap, remaining=result_budget)
+        budget = PassBudget(cap=result_cap, remaining=result_budget)
 
         defs = [{"type": "function",
                  "function": {"name": t.name, "description": t.description,
@@ -117,11 +92,7 @@ class HttpBackend:
                     messages.append({"role": "assistant", "content": content})
                     messages.append({"role": "user", "content": _JSON_FIX.format(error=e)})
                     return self._request_json(messages, schema)
-            messages.append({"role": "assistant", "content": msg.content or "",
-                             "tool_calls": [{"id": tc.id, "type": "function",
-                                             "function": {"name": tc.function.name,
-                                                          "arguments": tc.function.arguments}}
-                                            for tc in calls]})
+            messages.append(_echo_turn(msg))
             for tc in calls:
                 messages.append({"role": "tool", "tool_call_id": tc.id,
                                  "content": self._run_tool(usable, tc, budget)})
@@ -159,7 +130,7 @@ class HttpBackend:
         trace, self._tool_trace = self._tool_trace, []
         return trace
 
-    def _run_tool(self, usable: dict[str, Tool], tc, budget: "_ToolBudget") -> str:
+    def _run_tool(self, usable: dict[str, Tool], tc, budget: PassBudget) -> str:
         """Run one requested tool; any failure becomes an error STRING the model sees
         (and can react to), never an exception that kills the run. Each call is traced."""
         name = tc.function.name
@@ -174,12 +145,10 @@ class HttpBackend:
         # The model asked for something it already has. The tools in this loop are
         # READ-ONLY and nothing writes during a pass, so the answer cannot have changed —
         # re-sending the body would only pay for it again on every remaining step.
-        key = (name, json.dumps(args, sort_keys=True))
-        if key in budget.seen:
-            note = (f"(already read above in this pass — see the earlier {name} result; "
-                    "it has not changed)")
+        note = budget.repeat(name, args)
+        if note is not None:
             self._tool_trace.append({"tool": name, "args": args, "status": "ok",
-                                     "chars": budget.seen[key], "sent": len(note),
+                                     "chars": budget.size_of(name, args), "sent": len(note),
                                      "cached": True, "start": start, "end": now_iso()})
             return note
 
@@ -212,7 +181,7 @@ class HttpBackend:
             span["detail"] = result[:200]
         self._tool_trace.append(span)
         if status == "ok":
-            budget.seen[(name, json.dumps(args, sort_keys=True))] = full
+            budget.remember(name, args, full)
         return sent
 
     def _request_json(self, messages: list[dict], schema: dict | None) -> dict[str, Any]:
@@ -293,6 +262,27 @@ class HttpBackend:
 
 def _messages(system: str, user: str) -> list[dict]:
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+# response-only metadata a request's assistant message does not accept
+_RESPONSE_ONLY = ("annotations",)
+
+
+def _echo_turn(msg) -> dict:
+    """The assistant turn for the next request, AS THE PROVIDER SENT IT.
+
+    Providers attach state to a tool-calling turn that must come back unchanged: Gemini 3
+    puts a `thought_signature` on every tool call and answers a request without it with a
+    400 — measured, so no agentic pass could get past step 2 on Gemini. OpenRouter's
+    reasoning models carry `reasoning_details` the same way. The turn used to be rebuilt
+    field by field, which keeps only the fields we knew about; the SDK object keeps all of
+    them (extra fields included), so it is dumped instead."""
+    turn = msg.model_dump(exclude_none=True)
+    for key in _RESPONSE_ONLY:
+        turn.pop(key, None)
+    turn["role"] = "assistant"
+    turn["content"] = msg.content or ""
+    return turn
 
 
 # words that mean the PARAMETER was refused, rather than the request merely failing

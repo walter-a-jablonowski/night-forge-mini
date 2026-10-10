@@ -31,6 +31,9 @@
 
   "allow_list": [],
   "recent_runs": 5,
+  "_metric_targets_comment": "Optional: when the loop is DONE. With no new input a pass runs while any target is unmet; it stops with 'goal reached' (all met) or 'stopped improving' (no targeted metric moved in convergence_runs passes). number = at least; {\"max\": n} = at most. Keys are the pack's metric keys.",
+  "metric_targets": {},
+  "convergence_runs": 3,
 
   "_git_comment": "OPTIONAL git versioning of the materialized artifacts. Disabled unless enabled=true. repo_dir MUST be a PRE-INITIALIZED git repo rooted exactly there (run `git init` yourself) and MUST NOT be the project's source repo. granularity: per_run|per_action. Leave remote empty for local-only; set it (e.g. origin) to also push. Command-line variant (uses your existing git auth).",
   "git": {

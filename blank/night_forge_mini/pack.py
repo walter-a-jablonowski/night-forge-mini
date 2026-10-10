@@ -4,6 +4,8 @@ A pack provides exactly the "four things" (see tasks/resources/v1-blank-sys-and-
   1. a connector  — `fetch(seen_ids) -> artifacts`
   2. goal         — what "good" means for the domain
   3. analysis     — `(model, *, goal, snippets, history) -> {finding, metric, actions}`
+                    (+ optional `metric_errors: [str]` — kept OUT of the finding, which
+                    becomes the next pass's history)
                     `history` = {findings, metrics, rejections, failures, impact} from past runs
   4. actions      — name -> Action, each carrying honest `risk_level` + `reversible` + `run`
 

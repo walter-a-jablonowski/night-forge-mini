@@ -47,7 +47,11 @@ class Backend(Protocol):
 
     def run_tools(self, system: str, user: str, tools: list,
                   schema: dict | None = None, **kwargs) -> dict[str, Any]:
-        """Let the model read with READ-ONLY tools, then return the same JSON object."""
+        """Let the model read with READ-ONLY tools, then return the same JSON object.
+
+        kwargs are the pass bounds — `max_steps`, `result_cap`, `result_budget` (see
+        tools/pass_budget.py). A backend that reaches a model must HONOUR them, wherever
+        its loop runs; swallowing them leaves a pass bounded by nothing but a timeout."""
         ...
 
     def take_tool_trace(self) -> list[dict]:

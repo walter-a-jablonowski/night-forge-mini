@@ -29,6 +29,7 @@ import sys
 from typing import Any
 
 from ..records import now_iso
+from ..tools.pass_budget import ALREADY_READ, RESULT_BUDGET, RESULT_CAP
 from .base import LLMError, _extract_json
 
 MCP_NAME = "nfm"                     # how our server is named to the CLI
@@ -54,9 +55,16 @@ class ClaudeCodeBackend:
     # -- the two roles ---------------------------------------------------------
 
     def run_tools(self, system: str, user: str, tools: list,
-                  schema: dict | None = None, **kwargs) -> dict[str, Any]:
+                  schema: dict | None = None, max_steps: int = 6,
+                  result_cap: int = RESULT_CAP,
+                  result_budget: int = RESULT_BUDGET) -> dict[str, Any]:
         """One CLI turn. `tools` is used for its NAMES only — the callables live in this
-        process and the agent cannot reach them; it reaches equivalents over MCP."""
+        process and the agent cannot reach them; it reaches equivalents over MCP.
+
+        The bounds are the same ones the HTTP backend enforces in its own loop. Here the
+        agent owns the loop, so they travel to the MCP server, which enforces them per
+        call. They were once swallowed by `**kwargs`: a pass had no step or size limit
+        but the timeout, and one live pass read the same page five times."""
         names = [f"{MCP_PREFIX}{t.name}" for t in tools if t.available()]
         if not names:
             # A connected server offering NOTHING passes the check below while leaving the
@@ -66,7 +74,9 @@ class ClaudeCodeBackend:
             raise LLMError("the Claude Code backend was given no usable tools: the pack "
                            "declares none, or none is available. An agent with no tools "
                            "does not fail, it invents — so the turn is refused instead.")
-        out, code, err = self._run(self._command(names, system), user, self.timeout)
+        bounds = {"max_calls": max_steps, "result_cap": result_cap,
+                  "result_budget": result_budget}
+        out, code, err = self._run(self._command(names, system, bounds), user, self.timeout)
         turn = self._parse(out)
 
         if not turn["connected"]:
@@ -100,7 +110,8 @@ class ClaudeCodeBackend:
 
     # -- the process -----------------------------------------------------------
 
-    def _command(self, allowed: list[str], system: str) -> list[str]:
+    def _command(self, allowed: list[str], system: str,
+                 bounds: dict[str, int] | None = None) -> list[str]:
         """The argument list. Passed as a LIST so the executable starts directly — no
         shell, no quoting rules to get wrong.
 
@@ -120,7 +131,7 @@ class ClaudeCodeBackend:
                # must be written through our actions (gate, constraints, git), never by the
                # agent reaching the disk itself.
                "--tools", "",
-               "--mcp-config", self._mcp_config(), "--strict-mcp-config",
+               "--mcp-config", self._mcp_config(bounds or {}), "--strict-mcp-config",
                "--system-prompt", system]
         if allowed:
             cmd += ["--allowedTools", ",".join(allowed)]
@@ -128,16 +139,20 @@ class ClaudeCodeBackend:
             cmd += ["--model", self.model]
         return cmd
 
-    def _mcp_config(self) -> str:
-        """Our tool server, inline. FORWARD SLASHES ONLY: a Windows path would put `\\x`
-        in the JSON, which is not a valid escape — the CLI then reads the argument as a
-        FILE NAME and stops with "file not found"."""
+    def _mcp_config(self, bounds: dict[str, int]) -> str:
+        """Our tool server, inline, carrying this pass's bounds (`--max-calls` etc.).
+        FORWARD SLASHES ONLY: a Windows path would put `\\x` in the JSON, which is not a
+        valid escape — the CLI then reads the argument as a FILE NAME and stops with "file
+        not found"."""
         deploy = self.deploy.replace("\\", "/")
         python = self._python_bin()
-        self._server_cmd = f"{python} -m night_forge_mini.mcp_server {deploy}"
+        args = ["-m", "night_forge_mini.mcp_server", deploy]
+        for key, value in bounds.items():
+            args += [f"--{key.replace('_', '-')}", str(int(value))]
+        self._server_cmd = " ".join([python] + args)
         return json.dumps({"mcpServers": {MCP_NAME: {
             "command": python,
-            "args": ["-m", "night_forge_mini.mcp_server", deploy],
+            "args": args,
             "env": {"PYTHONPATH": deploy},
         }}}, ensure_ascii=False)
 
@@ -208,7 +223,9 @@ class ClaudeCodeBackend:
                         if span is None:
                             continue
                         body = _result_text(block.get("content"))
-                        span["chars"] = len(body)
+                        span["chars"] = len(body)   # what the agent received, not the file
+                        if body.startswith(ALREADY_READ):
+                            span["cached"] = True   # the server answered from the pass cache
                         if block.get("is_error"):
                             span["status"] = "error"
                             span["detail"] = body[:200]
