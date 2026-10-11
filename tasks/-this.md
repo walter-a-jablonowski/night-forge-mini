@@ -63,12 +63,28 @@ The blank system plus pne domain pack is merged in a new folder to get a running
 State: usable supervised, on a low-stakes artifact. No unattended, and no on anything you'd mind being wrong
        The guards are genuinely good — but the reason I trust them less than the count suggests is that every single live run found a new hole
 
-- [ ] next useful steps:
+- [x] next useful steps:
   - claude-code-backend-refinements §5 (count the tool calls a pass makes) before any scheduler-daemon
 
 Our goal is: close relevant implementation gaps that block usage (if any) and make test rounds until the system runs. We can do optional features from backlog later, important ones might be done now.
 
-- [ ] Test run looking for errors?
+- [x] What from the back should we do for that? Or is there something else that we need to add to the backlog?
+
+- [ ] Gaps that block unattended use
+
+  | #   | gap                                     | in backlog?                                     | why it blocks                                                                                                                                                                                                                                              |
+  | --- | --------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 1   | **A failed pass leaves no record**      | **no, new**                                     | It only prints to stderr and exits with code 1. The log keeps an orphan `input` record and nothing else (seen on `try/gemini` with the 429 errors). Run by a timer, nobody sees stderr, so overnight failures are invisible. Its token usage is lost too.  |
+  | 2   | **No guard against two passes at once** | **no, new** (only touched on in `sqlite-store`) | A website pass takes up to 75s, and up to 600s with retries. If a timer fires again during a pass, or you start `run-once` while one runs, both read the same new input, both write to the site, and both commit to git. A lock file per deploy is enough. |
+  | 3   | **`scheduler-daemon`**                  | yes (S)                                         | Windows Task Scheduler calling `run-once` would already work once 1 and 2 exist. The built-in `run-loop` adds an interval, backoff after errors, a daily cap on passes and tokens (the usage data now exists for that), and a clean shutdown.              |
+
+  **After that, the actual test round:** run `try/website` and `try/kb` unattended for a few hours at a short interval, with new notes dropped in along the way. Then review the log the way you would after a real night: what ran, what failed, what's held, what it cost, and whether it stopped on its own. That's the test the earlier summary was missing.
+
+  **Proposal:** I add items 1 and 2 to the backlog under 0.4.0, ahead of `scheduler-daemon`, build items 1–3 with tests, and then run the unattended round on both deploys and report back.
+
+- maybe general test and error checks with stronger model
+  - [ ] Let 5.5 check the system
+  - [ ] Test run looking for errors?
 - [ ] Make some usage overview: started in Readme
 - [ ] has nice /tasks setup with CLAUDE.md rules, move
 
