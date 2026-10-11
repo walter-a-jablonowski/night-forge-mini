@@ -1,5 +1,12 @@
 # Cost Logging → ROI / Cost-vs-Value Attribution
 
+**Step 1 DONE 2026-10-11** (with `claude-code-backend-refinements` §5): every analysis
+record carries `usage` — calls, input tokens (cached part), output tokens, and `cost_usd`
+where the provider reports one (the Claude Code CLI: Anthropic LIST price, nothing is billed
+per turn on a subscription). Judge calls are included. Left: step 2, attribution, and a
+budget a scheduler can enforce (tokens or $ per day). Gap: a pass that RAISES records no
+usage — it has no analysis record to carry it.
+
 **What:** (1) **Cost logging** — record token/API usage per loop run (visibility).
 (2) **Attribution** — join that cost to the value each run produced, so spend is
 justified by return instead of "token-maxing" on faith.

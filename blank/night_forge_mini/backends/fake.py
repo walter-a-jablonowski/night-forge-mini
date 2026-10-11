@@ -38,5 +38,8 @@ class FakeBackend:
     def take_tool_trace(self) -> list[dict]:
         return []
 
+    def take_usage(self) -> dict[str, float]:
+        return {}
+
     def label(self) -> str:
         return "fake-llm"

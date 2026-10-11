@@ -28,15 +28,15 @@ release that makes the last two legible and pays off their loose ends.
 1. observability (S) — wire one tracer through the backend seam: one call site per
    backend, and the store is already trace-shaped. A Claude Code turn IS a trace
    (stream-json). [text](backlog/observability.md)
-2. roi-measurement / cost logging (S) — still no answer to "what does a run cost". A
-   subscription turn has no token bill, so the first step is counting what the spans
-   already record. [text](backlog/roi-measurement.md)
+2. roi-measurement (L left) — cost logging DONE 2026-10-11: every pass records its token
+   usage and list price (website ~$0.08, kb ~$0.01 per pass on the CLI). Left: joining
+   cost to value, and a daily budget for a scheduler. [text](backlog/roi-measurement.md)
 3. analyze-context-amplification (S-M) — **unblocked**: lever 1 waited for the backend
    seam, which has landed. 20-35% measured on the HTTP path; levers 2+3 are done.
    [text](backlog/analyze-context-amplification.md)
 4. claude-code-backend-refinements (S each) — per-tool span timestamps (needed by 1),
-   measuring a turn's cost (feeds 2), action names called as tools on the CLI path (a cost,
-   seen in 3 of 9 passes). The one-shot/HTTP combination is resolved by routing.
+   action names called as tools on the CLI path (a cost, seen in 3 of 9 passes). Done: a
+   turn's cost is measured and logged (§5); the one-shot/HTTP combination is resolved.
    [text](backlog/claude-code-backend-refinements.md)
 5. salvage-partial-model-json (S) — when every JSON retry fails, keep what parsed instead
    of losing a pass whose tool budget is already spent.

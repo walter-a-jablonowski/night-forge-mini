@@ -31,7 +31,7 @@ from typing import Any
 
 from ..records import now_iso
 from ..tools.pass_budget import ALREADY_READ, RESULT_BUDGET, RESULT_CAP
-from .base import LLMError, _extract_json
+from .base import LLMError, _extract_json, add_usage
 
 MCP_NAME = "nfm"                     # how our server is named to the CLI
 MCP_PREFIX = f"mcp__{MCP_NAME}__"    # how the CLI namespaces our tool names
@@ -54,6 +54,7 @@ class ClaudeCodeBackend:
         self.timeout = int(block.get("timeout") or 300)
         self._run = runner or _run_cli       # injectable so the parser is testable
         self._tool_trace: list[dict] = []
+        self._usage: dict[str, float] = {}   # summed since the last take_usage
         self._server_cmd = ""              # resolved per turn; named in the refusal
 
     # -- the two roles ---------------------------------------------------------
@@ -83,6 +84,7 @@ class ClaudeCodeBackend:
         out, code, err = self._run(self._command(names, system, bounds, schema), user,
                                    self.timeout)
         turn = self._parse(out)
+        self._count(turn["result"])           # the turn ran, whatever its answer is worth
 
         if not turn["connected"]:
             raise LLMError(
@@ -117,6 +119,7 @@ class ClaudeCodeBackend:
         if not isinstance(reply, dict):
             raise LLMError(f"the Claude Code CLI gave no result (exit {code})"
                            f"{' - ' + err.strip()[:300] if err.strip() else ''}")
+        self._count(reply)
         if reply.get("is_error"):
             raise LLMError(f"the Claude Code CLI failed: {str(reply.get('result') or '')[:300]}")
         if isinstance(reply.get("structured_output"), dict):
@@ -126,6 +129,27 @@ class ClaudeCodeBackend:
     def take_tool_trace(self) -> list[dict]:
         trace, self._tool_trace = self._tool_trace, []
         return trace
+
+    def take_usage(self) -> dict[str, float]:
+        usage, self._usage = self._usage, {}
+        return usage
+
+    def _count(self, result: dict | None) -> None:
+        """The CLI's own account of a turn, from its `result` event. Its input is split
+        three ways (fresh, written to the cache, read from it); ours counts them as one
+        input total with the cache reads as a part, like the HTTP providers do. The cost is
+        Anthropic's LIST price for the tokens — on a subscription nothing is billed per
+        turn, but it is the one number that compares a pass across backends."""
+        if not isinstance(result, dict):
+            return
+        u = result.get("usage") if isinstance(result.get("usage"), dict) else {}
+        parts = [u.get(k) for k in ("input_tokens", "cache_creation_input_tokens",
+                                    "cache_read_input_tokens")]
+        add_usage(self._usage, calls=1,
+                  input_tokens=sum(p for p in parts if isinstance(p, (int, float))) or None,
+                  cached_tokens=u.get("cache_read_input_tokens"),
+                  output_tokens=u.get("output_tokens"),
+                  cost_usd=result.get("total_cost_usd"))
 
     def label(self) -> str:
         return f"claudeCode:{self.model or 'default'}"
@@ -228,7 +252,7 @@ class ClaudeCodeBackend:
         rest (banner, usage records, rate-limit events)."""
         spans: list[dict] = []
         pending: dict[str, dict] = {}      # tool_use id -> its span, awaiting the result
-        text, connected, structured, error = "", False, None, False
+        text, connected, structured, error, result = "", False, None, False, None
         stamp = now_iso()                  # the stream carries no per-event timestamps
 
         for line in out.splitlines():
@@ -270,12 +294,13 @@ class ClaudeCodeBackend:
                             span["status"] = "error"
                             span["detail"] = body[:200]
             elif kind == "result":
+                result = msg
                 text = str(msg.get("result") or "")
                 structured = msg.get("structured_output")
                 error = bool(msg.get("is_error"))
 
         return {"text": text, "spans": spans, "connected": connected,
-                "structured": structured, "error": error}
+                "structured": structured, "error": error, "result": result}
 
 
 def _plain(name: str) -> str:

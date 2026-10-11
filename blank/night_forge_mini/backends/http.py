@@ -28,7 +28,7 @@ from typing import Any
 from ..records import now_iso
 from ..tools.pass_budget import RESULT_BUDGET, RESULT_CAP, PassBudget
 from ..tools.registry import Tool
-from .base import LLMError, _extract_json
+from .base import LLMError, _extract_json, add_usage
 
 
 JSON_ATTEMPTS = 3    # one call plus two retries when the reply will not parse
@@ -51,6 +51,7 @@ class HttpBackend:
         self._client = None
         self._schema_ok: bool | None = None  # None = untested, False = provider rejected it
         self._tool_trace: list[dict] = []    # spans of the current run_tools loop
+        self._usage: dict[str, float] = {}   # summed since the last take_usage
 
     # The single one-shot model call site.
     def complete_json(self, system: str, user: str, schema: dict | None = None) -> dict[str, Any]:
@@ -114,7 +115,7 @@ class HttpBackend:
         every request itself gains nothing from the retry: `retry_transient_400: false`."""
         client = self._ensure_client()
         try:
-            return client.chat.completions.create(**kwargs)
+            resp = client.chat.completions.create(**kwargs)
         except Exception as e:  # noqa: BLE001 - re-raised unless it is worth one retry
             if (not _client_refused(e) or _param_rejected(e)
                     or not self.provider.get("retry_transient_400", True)):
@@ -123,7 +124,16 @@ class HttpBackend:
             self._tool_trace.append({"tool": "provider_retry", "args": {}, "status": "error",
                                      "chars": 0, "start": ts, "end": ts,
                                      "detail": str(e)[:200]})
-            return client.chat.completions.create(**kwargs)
+            resp = client.chat.completions.create(**kwargs)
+        # every answered call counts, including the ones a pass later throws away (a JSON
+        # retry, a reply that was cut off): they were paid for all the same
+        usage = getattr(resp, "usage", None)
+        add_usage(self._usage, calls=1,
+                  input_tokens=getattr(usage, "prompt_tokens", None),
+                  cached_tokens=getattr(getattr(usage, "prompt_tokens_details", None),
+                                        "cached_tokens", None),
+                  output_tokens=getattr(usage, "completion_tokens", None))
+        return resp
 
     @property
     def schema_ok(self) -> bool | None:
@@ -149,6 +159,10 @@ class HttpBackend:
         """Return and clear the spans of the tool calls made since the last take."""
         trace, self._tool_trace = self._tool_trace, []
         return trace
+
+    def take_usage(self) -> dict[str, float]:
+        usage, self._usage = self._usage, {}
+        return usage
 
     def _run_tool(self, usable: dict[str, Tool], tc, budget: PassBudget) -> str:
         """Run one requested tool; any failure becomes an error STRING the model sees

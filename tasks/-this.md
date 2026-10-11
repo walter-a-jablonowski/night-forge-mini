@@ -63,14 +63,10 @@ The blank system plus pne domain pack is merged in a new folder to get a running
 State: usable supervised, on a low-stakes artifact. No unattended, and no on anything you'd mind being wrong
        The guards are genuinely good — but the reason I trust them less than the count suggests is that every single live run found a new hole
 
-Goal: close relevant implementation gaps that block usage (if any) and make test rounds until the system runs. We can do optional features from backlog later, important ones might be done now.
-
-- [x] Did we check the kb pack as well? Should we?
-
-- [ ] next useful steps
+- [ ] next useful steps:
   - claude-code-backend-refinements §5 (count the tool calls a pass makes) before any scheduler-daemon
 
-- [x] Anything left from the test run that we should do?
+Our goal is: close relevant implementation gaps that block usage (if any) and make test rounds until the system runs. We can do optional features from backlog later, important ones might be done now.
 
 - [ ] Test run looking for errors?
 - [ ] Make some usage overview: started in Readme
@@ -98,6 +94,9 @@ Done
 ----------------------------------------------------------
 
 ### 2026-10-11
+
+- [x] Did we check the kb pack as well? Should we?
+- [x] Anything left from the test run that we should do?
 
 - Test run
 

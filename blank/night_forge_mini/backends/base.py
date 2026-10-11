@@ -58,9 +58,29 @@ class Backend(Protocol):
         """Spans of the tool calls made since the last take, for the Engine to log."""
         ...
 
+    def take_usage(self) -> dict[str, float]:
+        """What the model calls since the last take consumed, summed (see `add_usage`):
+        only the counts the provider reported — a missing key means unknown, not zero."""
+        ...
+
     def label(self) -> str:
         """What answered, for the run record (e.g. `openrouter:z-ai/glm-5.2`)."""
         ...
+
+
+# The usage keys every backend reports in, so a run's cost reads the same whichever one
+# answered: `input_tokens` counts ALL prompt tokens (cached ones included), `cached_tokens`
+# the part read from a cache, `cost_usd` what the provider says the calls cost (the CLI
+# reports a LIST price even on a subscription, where nothing is billed per call).
+USAGE_KEYS = ("calls", "input_tokens", "cached_tokens", "output_tokens", "cost_usd")
+
+
+def add_usage(total: dict[str, float], **counts: Any) -> None:
+    """Add the reported counts to `total`; anything absent or not a number is skipped,
+    so an unreported count stays unknown instead of becoming a false zero."""
+    for key, value in counts.items():
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and value:
+            total[key] = total.get(key, 0) + value
 
 
 _backends: dict[str, Any] = {}

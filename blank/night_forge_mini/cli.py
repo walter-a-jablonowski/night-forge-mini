@@ -165,6 +165,21 @@ def _probe(config_path: str, fake_llm: bool) -> int:
     return 1 if any(r["ok"] is False for r in rows) else 0
 
 
+def usage_line(u: dict) -> str:
+    """`3 calls · 45.2k in (38.0k cached) · 1.9k out · $0.0812` — only what was reported."""
+    def k(n: float) -> str:
+        return f"{n / 1000:.1f}k" if n >= 1000 else f"{n:g}"
+    parts = [f"{u['calls']:g} call(s)"] if "calls" in u else []
+    if "input_tokens" in u:
+        cached = f" ({k(u['cached_tokens'])} cached)" if "cached_tokens" in u else ""
+        parts.append(f"{k(u['input_tokens'])} in{cached}")
+    if "output_tokens" in u:
+        parts.append(f"{k(u['output_tokens'])} out")
+    if "cost_usd" in u:
+        parts.append(f"${u['cost_usd']:.4f}")
+    return " · ".join(parts)
+
+
 def _run_once(eng: Engine) -> int:
     r = eng.run_once()
     if r["status"] == "noop":
@@ -179,6 +194,8 @@ def _run_once(eng: Engine) -> int:
     print(f"metric     : {metric_str}")
     for err in r.get("metric_errors") or []:
         print(f"  not measured: {err[:160]}")
+    if r.get("usage"):
+        print(f"usage      : {usage_line(r['usage'])}")
     print("proposal   :")
     for item in r["ran"]:
         a = item["action"]
@@ -281,6 +298,8 @@ def _print_rec(r, indent: str = "  ") -> None:
     else:
         extra = ""
     print(f"{indent}{r.type:<9} {extra}")
+    if r.type == "analysis" and r.payload.get("usage"):
+        print(f"{indent}{'':<9} usage: {usage_line(r.payload['usage'])}")
 
 
 if __name__ == "__main__":

@@ -83,7 +83,11 @@ class Engine:
         if pending:
             history["pending"] = pending    # tell analyze WHY it was run without new input
 
-        # (3) Analyze (pack builds context + measures metric)
+        # (3) Analyze (pack builds context + measures metric). A pass that RAISED left its
+        # spans and usage in the backend; they belong to no record, and must not be logged
+        # as this pass's (a REPL session keeps one backend across passes).
+        self.model.take_tool_trace()
+        self.model.take_usage()
         start = now_iso()
         result = self.pack.analyze(self.model, goal=self.pack.goal,
                                    snippets=snippets, history=history)
@@ -101,6 +105,10 @@ class Engine:
                    "goal": self.pack.goal, "model": model_label}
         if metric_errors:
             payload["metric_errors"] = metric_errors
+        # what the pass consumed, judge calls included (they run inside analyze)
+        usage = self.model.take_usage()
+        if usage:
+            payload["usage"] = usage
         analysis = self.store.append(Record(run_id=run_id, domain=domain, type=ANALYSIS,
                                             start_ts=start, end_ts=now_iso(), payload=payload))
         # If analyze used the agentic tool loop, log each read as a span under the analysis.
@@ -145,6 +153,7 @@ class Engine:
 
         return {"status": "ok", "run_id": run_id, "captured": len(snippets),
                 "finding": finding, "metric": metric_value, "metric_errors": metric_errors,
+                "usage": usage,
                 "model": model_label, "ran": ran, "pending": pending,
                 "git": git_results}
 

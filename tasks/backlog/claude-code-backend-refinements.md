@@ -54,6 +54,21 @@ the per-turn startup (process spawn + MCP handshake + re-reading the artifact) c
 than the determinism is worth. The archived task carries the reasoning.
 
 ## 5. Not measured yet: what a turn actually consumes
+
+**DONE 2026-10-11, reshaped.** Counting tool calls was a proxy; the CLI's `result` event
+already carries the real numbers (`usage`, `total_cost_usd`), and so does every HTTP
+response — they were thrown away. Now every backend sums them (`take_usage`), the Engine
+stores the pass total on the analysis record (`usage`), and `run-once` / `trace` print it.
+Merged with `roi-measurement.md` step 1. Measured live:
+
+| pass | calls | input (cached) | output | list price | time |
+|---|---|---|---|---|---|
+| website, CLI agent + CLI haiku judge | 2 | 26.9k (14.7k) | 5.7k | $0.082 | ~45 s |
+| kb, CLI agent | 1 | 6.5k (4.5k) | 0.5k | $0.014 | ~8 s |
+
+Tool calls per pass, from the existing log: website 4-14, kb 0-6, Gemini HTTP 7 — capped
+now by the pass bounds, and the loop stops itself (metric targets), which were the two
+runaway risks this section was guarding against before `scheduler-daemon`.
 Subscription usage is session-based, so there is no per-token bill to read — but we also do
 not know how many tool steps a typical pass spends on the CLI versus the HTTP backend, which
 is what would tell us whether an unattended daemon is safe. The `tool_call` spans are already

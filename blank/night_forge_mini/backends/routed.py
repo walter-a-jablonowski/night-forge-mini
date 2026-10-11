@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .base import get, names
+from .base import add_usage, get, names
 from .claude_code import ClaudeCodeBackend
 from .http import HttpBackend
 
@@ -44,6 +44,12 @@ class RoutedBackend:
     def take_tool_trace(self) -> list[dict]:
         # a one-shot call can leave spans too (an HTTP retry), and a pass makes both kinds
         return self.agent.take_tool_trace() + self.one_shot.take_tool_trace()
+
+    def take_usage(self) -> dict[str, float]:
+        total: dict[str, float] = {}
+        for part in (self.agent.take_usage(), self.one_shot.take_usage()):
+            add_usage(total, **part)
+        return total
 
     def label(self) -> str:
         return f"{self.agent.label()} + one-shot {self.one_shot.label()}"

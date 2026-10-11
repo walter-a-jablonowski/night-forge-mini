@@ -25,7 +25,9 @@ exactly one **domain pack** and deploy.
    one-tool agent loop) with a known answer, per route, and reports what fails: quota,
    cut-off replies, a provider that rejects structured output. It needs no pack. Run it
    after changing `backend`, `provider` or `one_shot`.
-   Add `--fake-llm` to run the whole loop offline (no API key / no tokens). In the REPL,
+   `run-once` also prints what the pass consumed (`usage`: calls, tokens in/cached/out,
+   and the list price where the backend reports one); it is stored on the run's analysis
+   record. Add `--fake-llm` to run the whole loop offline (no API key / no tokens). In the REPL,
    `approve`/`reject` also accept an inbox number (e.g. `approve 1`).
 
 Without a `domain_pack/` present, the core refuses to run and tells you to drop a pack in.
