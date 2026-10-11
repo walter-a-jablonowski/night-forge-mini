@@ -93,7 +93,7 @@ class KnowledgeBase:
             # (reversible=False => held for approval). Never silently overwrite on auto-run.
             return {"status": "error", "detail": f"entry {f.name} exists; use edit_entry"}
         fm = {"title": payload.get("title", target), "id": slug(target),
-              "source": payload.get("source", ""), "updated": _now()}
+              "source": ", ".join(_sources(payload.get("source"))), "updated": _now()}
         f.write_text(_render(fm, payload.get("body", "")), encoding="utf-8")
         return {"status": "ok", "detail": f"created {f.name}"}
 
@@ -108,6 +108,11 @@ class KnowledgeBase:
         if base is not None and base != _hash(_body(old)):
             return {"status": "error", "detail": f"{f.name} changed since proposed; re-run to re-propose"}
         fm = _frontmatter(old)
+        # provenance accumulates: an entry names every snippet its content came from, not
+        # only the ones that created it (live 2026-10-11: an MFA update merged into
+        # vpn-setup left `source:` naming the two original snippets only)
+        fm["source"] = ", ".join(dict.fromkeys(_sources(fm.get("source"))
+                                               + _sources(payload.get("source"))))
         fm["updated"] = _now()
         f.write_text(_render(fm, payload.get("body", _body(old))), encoding="utf-8")
         return {"status": "ok", "detail": f"edited {f.name}"}
@@ -149,6 +154,13 @@ def _now() -> str:
 
 def _hash(s: str) -> str:
     return hashlib.sha1(s.encode("utf-8")).hexdigest()
+
+
+def _sources(value: Any) -> list[str]:
+    """`source` as a list: the frontmatter keeps it comma-separated, a model may send a
+    string or a list."""
+    items = value if isinstance(value, list) else str(value or "").split(",")
+    return [s for s in (str(i).strip() for i in items) if s]
 
 
 def slug(s: str) -> str:

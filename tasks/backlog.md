@@ -122,4 +122,4 @@ run-on-internal-state · hard-constraints-bypassable-by-action-choice ·
 website-analyze-prompt-tools · write-actions-accept-wrong-file-shape ·
 json-parse-failures-must-be-retryable · website-action-precondition-confusion (no fix
 needed) · claude-code-backend · kb-pack-tests · claude-code-pass-bounds ·
-http-tool-loop-provider-state · run-when-metric-below-target
+http-tool-loop-provider-state · run-when-metric-below-target · kb-edit-provenance

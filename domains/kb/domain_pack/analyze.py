@@ -51,9 +51,10 @@ SYSTEM = """You curate a knowledge base of markdown entries from incoming text s
 Goal: {goal}
 You may ONLY propose these actions: {actions}.
   add_entry(target=new-entry-id, payload={{title, body, source}})         -- new knowledge (fails if the id already exists)
-  edit_entry(target=existing-id, payload={{body}})                        -- rewrite an entry (will require human approval)
+  edit_entry(target=existing-id, payload={{body, source}})                -- rewrite an entry (will require human approval)
   flag_contradiction(target=existing-id, payload={{note}})                -- note a conflict
   mark_stale(target=existing-id)                                          -- mark outdated
+source = the id(s) of the snippet(s) the content comes from; an edit adds them to the entry's list.
 You can call the read_entry tool to read any entry in full - ALWAYS read an entry before
 proposing edit_entry on it, and base the new body on what is actually there.
 When you are done reading, return STRICT JSON only (no more tool calls):
@@ -110,7 +111,7 @@ def _fake_actions(kb_index: list[dict], snippets: list[dict]) -> list[dict]:
                 "name": "edit_entry",
                 "target": target,
                 "rationale": "snippet appears to update an existing entry",
-                "payload": {"body": s["text"]},
+                "payload": {"body": s["text"], "source": s["source"]},
             })
         else:
             actions.append({

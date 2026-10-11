@@ -53,6 +53,29 @@ def test_a_proposed_edit_is_stamped_with_the_body_it_was_based_on( tmp_path ):
   assert kb.edit_entry('vpn', actions[0]['payload'] | {'body': 'x'})['status'] == 'error'
 
 
+def source_of( kb, entry_id ):
+  return [l for l in kb.read(entry_id).splitlines() if l.startswith('source:')][0]
+
+
+def test_an_edit_adds_its_snippets_to_the_entrys_sources( tmp_path ):
+  """Live 2026-10-11: an update merged into vpn-setup, and `source:` still named only the
+  snippets that created the entry."""
+  kb = KnowledgeBase(tmp_path)
+  kb.add_entry('vpn', {'title': 'VPN', 'body': 'use eu-west', 'source': 'snip-a, snip-b'})
+  kb.edit_entry('vpn', {'body': 'use eu-central', 'source': 'snip-c'})
+  kb.edit_entry('vpn', {'body': 'and MFA', 'source': ['snip-b', 'snip-d']})   # repeat: once
+  assert source_of(kb, 'vpn') == 'source: snip-a, snip-b, snip-c, snip-d'
+
+  kb.edit_entry('vpn', {'body': 'typo fixed'})                     # no source: kept as is
+  assert source_of(kb, 'vpn') == 'source: snip-a, snip-b, snip-c, snip-d'
+
+
+def test_a_list_source_is_written_as_the_frontmatter_list( tmp_path ):
+  kb = KnowledgeBase(tmp_path)
+  kb.add_entry('wifi', {'title': 'Wifi', 'body': 'b', 'source': ['snip-a', 'snip-b']})
+  assert source_of(kb, 'wifi') == 'source: snip-a, snip-b'
+
+
 def test_the_pack_offers_tools_to_an_agent_backend( tmp_path ):
   """An agent backend with no tools does not fail, it invents — so it refuses the turn.
   The pack must therefore always declare its read tool."""
