@@ -65,16 +65,22 @@ sqlite-store, so the storage is designed around its first real consumer.
    stops (goal reached · stopped improving · cannot measure), live-verified to a
    "goal reached" and a "stopped improving" stop; convergence compares best values
    (judge noise, 2026-10-11). [text](v%20done/261010%20-%20run-when-metric-below-target.md)
-2. scheduler-daemon (S) — the realistic unattended loop; the first candidate second
-   writer. [text](backlog/run-triggers/scheduler-daemon.md)
-3. approval-ui (S read-only) — web inbox over the log; the other candidate second writer,
+2. ~~failed-pass-record~~ — DONE 2026-10-11: a pass that raises leaves an `error` record
+   (stage, reason, usage). [text](v%20done/261011%20-%20failed-pass-record.md)
+3. ~~run-lock~~ — DONE 2026-10-11: one writer per deploy (OS lock, no stale lock after a
+   kill). [text](v%20done/261011%20-%20run-lock.md)
+4. ~~scheduler-daemon~~ — DONE 2026-10-11: `run-loop` (interval, backoff, 24 h budget,
+   `--until`) + `report`; live unattended round on three deploys.
+   [text](v%20done/261011%20-%20scheduler-daemon.md)
+5. approval-ui (S read-only) — web inbox over the log; the other candidate second writer,
    and it lowers the cost of keeping a human at the gate. Matters most for the website
    pack (diffs for overwrite/delete). [text](backlog/approval-ui.md)
-4. sqlite-store (M) — pulled in by whichever of 2/3 lands first.
+6. sqlite-store (M) — pulled in by approval-ui (a second process writing while a pass runs);
+   the daemon did not need it, the run lock serializes writers per deploy.
    [text](backlog/sqlite-store.md)
-5. filesystem-watch (S) — event-driven trigger; fits the KB folder.
+7. filesystem-watch (S) — event-driven trigger; fits the KB folder.
    [text](backlog/run-triggers/filesystem-watch.md)
-6. data-governance (S first step) — scoped read-only creds per connector, and now a second
+8. data-governance (S first step) — scoped read-only creds per connector, and now a second
    credential KIND: a subscription-backed backend has no api key at all. Unattended running
    is what makes this urgent. [text](backlog/data-governance.md)
 
@@ -127,4 +133,4 @@ website-analyze-prompt-tools · write-actions-accept-wrong-file-shape ·
 json-parse-failures-must-be-retryable · website-action-precondition-confusion (no fix
 needed) · claude-code-backend · kb-pack-tests · claude-code-pass-bounds ·
 http-tool-loop-provider-state · run-when-metric-below-target · kb-edit-provenance ·
-interchangeable-llms
+interchangeable-llms · failed-pass-record · run-lock · scheduler-daemon

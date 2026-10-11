@@ -14,7 +14,7 @@ approve/reject UX Claude Code uses for tool calls.
 
 **Why it's a trigger:** typing `run` fires a pass, and the same session is the human-at-the-
 gate. It's the **human-driven, foreground** counterpart to the unattended
-[scheduler-daemon](../backlog/run-triggers/scheduler-daemon.md) / [filesystem-watch](../backlog/run-triggers/filesystem-watch.md) /
+[scheduler-daemon](261011%20-%20scheduler-daemon.md) / [filesystem-watch](../backlog/run-triggers/filesystem-watch.md) /
 [webhook-trigger](../backlog/run-triggers/webhook-trigger.md).
 
 **Why deferred:** v1 ships the minimal one-shot CLI (`run-once`/`inbox`/`approve`/`reject`/

@@ -9,7 +9,7 @@ idea_2 deferred "cron/daemon"; none of these are built yet. One pass = one `run_
 you talk to it*, not the loop logic.
 
 ## Files (by effort)
-- [scheduler-daemon.md](scheduler-daemon.md) — interval poll loop (the realistic "endless loop"). **S**
+- [scheduler-daemon](../../v%20done/261011%20-%20scheduler-daemon.md) — interval poll loop (the realistic "endless loop"). **DONE 2026-10-11** (`run-loop`)
 - [filesystem-watch.md](filesystem-watch.md) — fire a run when a new artifact lands (event-driven). **S**
 - [interactive-cli-editing.md](interactive-cli-editing.md) — the REPL's remaining M half: edit-before-approve + streaming. The REPL itself is **done** (`tasks/v done/260621 - interactive-cli.md`)
 - [library-embed.md](library-embed.md) — call the engine as a Python library (already works; document + harden). **XS**

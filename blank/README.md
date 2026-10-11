@@ -118,6 +118,28 @@ fresh would cost a judge call just to decide whether to think).
 - The pack code owns the domain definition (goal, metric, connector impl, actions). The pack
   declares each action's honest reversibility; your `allow_list` decides what auto-runs.
 
+## Running unattended
+```
+python -m night_forge_mini run-loop --until 07:00        # tonight, one tick per interval
+python -m night_forge_mini report --since 12h            # the morning view
+```
+- **run-loop** ticks every `schedule.interval` (default 15m). A tick with nothing to do is a
+  cheap noop, so it keeps polling for new input after a `STOP`. A failed pass doubles the wait
+  (up to `max_backoff`), a success resets it. `passes_per_day` / `tokens_per_day` cap the spend
+  over a rolling 24 h, counted from the log, so a restarted loop sees what the last one spent.
+  `--until HH:MM` ends the night on its own; Ctrl+C ends it at once (a pass cut off mid-way
+  leaves its actions HELD, never half-run).
+- **report** lists every pass in the window from the log, whoever started it: how it ended,
+  what its actions did, what it measured and spent, what is held, and where the goal stands.
+- **One writer per deploy:** a pass, an approve or a reject takes an OS lock beside the log.
+  A tick that finds it taken is skipped; a manual `run-once` says "another pass is running".
+  The lock dies with its process, so a killed pass leaves nothing stale behind.
+- **A failed pass is in the log** (`error` record: stage, reason, what it had spent), so a
+  night of failures does not look like a night with nothing to do.
+- Without run-loop, an OS scheduler works too: Task Scheduler / cron calling `run-once` gets
+  the same lock and failure records (but no backoff and no budget). Redirect the output to a
+  file either way; the log is the record, the output is the narrative.
+
 ## Optional: git versioning of the materialized artifacts
 The JSONL log is always the source of truth. On top of it you can **optionally** version the
 files a pack writes (the KB markdown, a website's pages, …) in git, getting real diffs and

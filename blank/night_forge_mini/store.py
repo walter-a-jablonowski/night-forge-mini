@@ -13,7 +13,7 @@ import json
 import sys
 from pathlib import Path
 
-from .records import Record, INPUT, ANALYSIS, PROPOSAL, DECISION, OUTCOME
+from .records import Record, INPUT, ANALYSIS, PROPOSAL, DECISION, OUTCOME, ERROR
 
 
 class Store:
@@ -103,11 +103,17 @@ class Store:
         """Did the most recent run change anything — capture new input, or run an action
         successfully? The anti-spin test for pending-work runs: a pass that changed
         nothing means repeating it on the same reason is pointless. True when nothing has
-        run yet, so a first pass is never blocked."""
+        run yet, so a first pass is never blocked.
+
+        A FAILED run is skipped: it is evidence of a failure, not of no progress - counting
+        it would let one transient 429 block every later metric-driven pass until new
+        input arrived. Retrying failures is the scheduler's job (with backoff)."""
         recs = self.all()
-        if not recs:
+        failed = {r.run_id for r in recs if r.type == ERROR}
+        done = [r for r in recs if r.run_id not in failed]
+        if not done:
             return True
-        last = recs[-1].run_id
+        last = done[-1].run_id
         for r in recs:
             if r.run_id != last:
                 continue
@@ -162,6 +168,44 @@ class Store:
                  "had_chance": r.run_id in ok_runs or r.run_id in empty_runs,
                  "model": str(r.payload.get("model") or "")}
                 for r in recs if r.type == ANALYSIS]
+
+    # --- what happened while nobody watched (run-loop budget, `report`) ------
+
+    def runs_since(self, since: str) -> list[dict]:
+        """Every pass that ENDED (an analysis or an error record) at or after `since` (UTC
+        ISO), oldest first: how it ended, what its actions did, what it measured and spent.
+        A noop tick writes nothing, so it is not here — by design, the log holds work."""
+        recs = self.all()
+        decided = self.decided_action_ids()
+        runs: dict[str, dict] = {}
+        for r in recs:
+            if r.type in (ANALYSIS, ERROR) and r.ts >= since:
+                runs.setdefault(r.run_id, {"run_id": r.run_id, "ts": r.ts, "status": "ok",
+                                           "ran": 0, "failed": 0, "held": 0,
+                                           "metric": {}, "usage": {}})
+        for r in recs:
+            run = runs.get(r.run_id)
+            if run is None:
+                continue
+            if r.type == ERROR:
+                run.update(status="failed", stage=r.payload.get("stage", ""),
+                           error=r.payload.get("error", ""), usage=r.payload.get("usage") or {})
+            elif r.type == ANALYSIS:
+                run.update(metric=r.payload.get("metric") or {},
+                           usage=r.payload.get("usage") or {})
+            elif r.type == OUTCOME:
+                run["ran" if r.payload.get("status") == "ok" else "failed"] += 1
+            elif r.type == PROPOSAL:
+                run["held"] += sum(1 for a in r.payload.get("actions", [])
+                                   if a.get("action_id") not in decided)
+        return list(runs.values())
+
+    def spent_since(self, since: str) -> dict[str, int]:
+        """Passes and tokens (input + output) since `since` — the scheduler's budget."""
+        runs = self.runs_since(since)
+        tokens = sum(int(r["usage"].get("input_tokens", 0)) + int(r["usage"].get("output_tokens", 0))
+                     for r in runs)
+        return {"passes": len(runs), "tokens": tokens}
 
     def recent_rejections(self, n: int) -> list[dict]:
         """The last n human-rejected actions — the strongest teaching signal there is."""

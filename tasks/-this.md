@@ -82,6 +82,10 @@ Our goal is: close relevant implementation gaps that block usage (if any) and ma
 
   **Proposal:** I add items 1 and 2 to the backlog under 0.4.0, ahead of `scheduler-daemon`, build items 1–3 with tests, and then run the unattended round on both deploys and report back.
 
+  ---
+
+  To run it for real tonight: python -m night_forge_mini run-loop --until 07:00 in a deploy folder, with the output redirected to a file. Then run report --since 12h in the morning.
+
 - maybe general test and error checks with stronger model
   - [ ] Let 5.5 check the system
   - [ ] Test run looking for errors?

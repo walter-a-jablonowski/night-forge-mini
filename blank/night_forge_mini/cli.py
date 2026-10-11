@@ -1,6 +1,7 @@
 """CLI over the log (idea_2 "Approval interface = CLI over the log").
 
-Commands: run-once · inbox · approve <action_id> · reject <action_id> · trace <run_id> · probe
+Commands: run-once · run-loop · report · inbox · approve <action_id> · reject <action_id> ·
+trace <run_id> · probe
 Run with no command (or `shell`) for an interactive REPL session that loads the engine once
 and dispatches the same operations in a loop. Every command prints a readable summary; the
 JSONL log stays the source of truth.
@@ -13,13 +14,16 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import datetime, timedelta, timezone
 
 from . import __version__, backends
 from .config import load
 from .env import load_dotenv
+from .backends.base import add_usage
 from .loop import Engine
 from .probe import probe
-from .records import DECISION, OUTCOME
+from .scheduler import Schedule, Scheduler, seconds
+from .records import DECISION, ERROR, OUTCOME
 
 
 def _load_pack():
@@ -42,6 +46,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--fake-llm", action="store_true", help="deterministic offline analysis (no API key / tokens)")
     sub = p.add_subparsers(dest="cmd", required=False)  # no command -> interactive REPL
     sub.add_parser("run-once", help="run one loop pass")
+    lp = sub.add_parser("run-loop", help="run passes on a timer, unattended (Ctrl+C stops)")
+    lp.add_argument("--interval", help="time between ticks, e.g. 15m (default: config "
+                                       "schedule.interval, else 15m)")
+    lp.add_argument("--until", help="stop at this local time, HH:MM")
+    lp.add_argument("--ticks", type=int, help="stop after this many ticks")
+    rp = sub.add_parser("report", help="what the loop did in a time window (the morning view)")
+    rp.add_argument("--since", default="12h", help="how far back, e.g. 12h, 90m (default 12h)")
     sub.add_parser("inbox", help="list pending actions awaiting approval")
     ap = sub.add_parser("approve", help="approve a pending action"); ap.add_argument("action_id")
     rj = sub.add_parser("reject", help="reject a pending action"); rj.add_argument("action_id")
@@ -66,6 +77,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.cmd == "run-once":
             return _run_once(eng)
+        if args.cmd == "run-loop":
+            return _run_loop(eng, cfg, args)
+        if args.cmd == "report":
+            return _report(eng, args.since)
         if args.cmd == "inbox":
             return _inbox(eng)
         if args.cmd == "approve":
@@ -181,11 +196,18 @@ def usage_line(u: dict) -> str:
 
 
 def _run_once(eng: Engine) -> int:
-    r = eng.run_once()
+    _show_pass(eng.run_once())
+    return 0
+
+
+def _show_pass(r: dict) -> None:
+    """What one pass did — the same lines for `run-once` and every `run-loop` tick."""
     if r["status"] == "noop":
-        # a metric-target stop is an answer, not an absence of work — say which one
-        print(f"STOP - {r['reason']}" if r.get("stop") else f"nothing to do: {r['reason']}")
-        return 0
+        # a metric-target stop is an answer, not an absence of work — say which one; a
+        # busy deploy is neither
+        label = "STOP -" if r.get("stop") else "busy -" if r.get("busy") else "nothing to do:"
+        print(f"{label} {r['reason']}")
+        return
     m = r["metric"] or {}
     metric_str = "  ".join(f"{k}={v}" for k, v in m.items()) if m else "(none)"
     print(f"run        : {r['run_id']}  (model: {r['model']})")
@@ -207,6 +229,72 @@ def _run_once(eng: Engine) -> int:
     if r["pending"]:
         print(f"{len(r['pending'])} pending - run `inbox` to review")
     _print_git(r.get("git"))
+
+
+def _run_loop(eng: Engine, cfg, args) -> int:
+    schedule = Schedule.from_config(cfg, interval=args.interval, until=args.until,
+                                    ticks=args.ticks)
+    # unattended output usually goes to a file: write each line as it happens
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)
+    limits = [f"every {schedule.interval:g}s"]
+    if schedule.until:
+        limits.append(f"until {schedule.until:%Y-%m-%d %H:%M}")
+    if schedule.ticks:
+        limits.append(f"{schedule.ticks} tick(s)")
+    if schedule.passes_per_day:
+        limits.append(f"max {schedule.passes_per_day} passes/24h")
+    if schedule.tokens_per_day:
+        limits.append(f"max {schedule.tokens_per_day} tokens/24h")
+    print(f"run-loop: {', '.join(limits)} - Ctrl+C stops")
+
+    def on_tick(e: dict) -> None:
+        print(f"\n--- {e['at']:%Y-%m-%d %H:%M:%S}  tick {e['tick']}")
+        if e["kind"] == "failed":
+            print(f"FAILED - {e['error'][:300]}  (recorded in the log; next tick backs off)")
+        elif e["kind"] == "skipped" and "result" not in e:
+            print(f"skipped - {e['reason']}")
+        else:
+            _show_pass(e["result"])
+
+    s = Scheduler(eng, schedule, on_tick).run()
+    print(f"\nrun-loop ended ({s['stopped']}): {s['ticks']} tick(s) - {s['ran']} ran, "
+          f"{s['failed']} failed, {s['noop']} idle, {s['skipped']} skipped")
+    held = len(eng.store.pending_actions())
+    if held:
+        print(f"{held} action(s) held for approval - run `inbox`")
+    return 0
+
+
+def _report(eng: Engine, since_arg: str) -> int:
+    """The morning view: every pass in the window, what it did, failed and cost — from the
+    log, so it covers passes started by anything (run-loop, Task Scheduler, a human)."""
+    start = datetime.now(timezone.utc) - timedelta(seconds=seconds(since_arg))
+    runs = eng.store.runs_since(start.isoformat(timespec="seconds"))
+    total: dict = {}
+    for r in runs:
+        add_usage(total, **r["usage"])
+    failed = sum(1 for r in runs if r["status"] == "failed")
+    print(f"since {start.astimezone():%Y-%m-%d %H:%M}: {len(runs)} pass(es), {failed} failed"
+          f" · actions {sum(r['ran'] for r in runs)} ran, {sum(r['failed'] for r in runs)} "
+          f"failed, {sum(r['held'] for r in runs)} held")
+    if total:
+        print(f"usage: {usage_line(total)}")
+    for r in runs:
+        at = datetime.fromisoformat(r["ts"]).astimezone()
+        if r["status"] == "failed":
+            print(f"  {at:%m-%d %H:%M}  {r['run_id']}  FAILED in {r['stage']}: {r['error'][:120]}")
+            continue
+        metric = "  ".join(f"{k}={v}" for k, v in r["metric"].items())
+        acts = f"{r['ran']} ran" + (f", {r['failed']} failed" if r["failed"] else "") + \
+            (f", {r['held']} held" if r["held"] else "")
+        print(f"  {at:%m-%d %H:%M}  {r['run_id']}  ok  {acts:<22} {metric}")
+    if eng.targets.targets:
+        v = eng.targets.check(eng.store.metric_runs(), setup=eng.model.label())
+        print(f"goal now: {v.state}" + (f" - {v.reason}" if v.reason else ""))
+    held = len(eng.store.pending_actions())
+    if held:
+        print(f"{held} action(s) held for approval - run `inbox`")
     return 0
 
 
@@ -295,10 +383,12 @@ def _print_rec(r, indent: str = "  ") -> None:
         extra = f"{r.payload.get('verdict')} by {r.payload.get('by')}"
     elif r.type == OUTCOME:
         extra = f"{r.payload.get('status')} {r.payload.get('detail','')}"
+    elif r.type == ERROR:
+        extra = f"FAILED in {r.payload.get('stage')}: {r.payload.get('error', '')[:200]}"
     else:
         extra = ""
     print(f"{indent}{r.type:<9} {extra}")
-    if r.type == "analysis" and r.payload.get("usage"):
+    if r.type in ("analysis", ERROR) and r.payload.get("usage"):
         print(f"{indent}{'':<9} usage: {usage_line(r.payload['usage'])}")
 
 

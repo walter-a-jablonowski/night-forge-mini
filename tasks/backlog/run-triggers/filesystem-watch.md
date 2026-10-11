@@ -4,7 +4,7 @@
 when a file is added/changed, instead of polling on a timer. Natural fit for the KB demo's
 `text-folder` connector (`data/inbox/`). E.g. via `watchdog`.
 
-**Why deferred:** v1 is manual. Watching is only worth it over a [scheduler-daemon](scheduler-daemon.md)
+**Why deferred:** v1 is manual. Watching is only worth it over a [scheduler-daemon](../../v%20done/261011%20-%20scheduler-daemon.md)
 poll when you want low latency (act the moment a file lands) and polling feels wasteful.
 
 **Value:** Near-instant reaction to new input with no busy-polling; good demo of true

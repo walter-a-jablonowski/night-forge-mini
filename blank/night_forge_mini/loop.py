@@ -13,9 +13,13 @@ from . import backends
 from .gate import can_auto_run, decide
 from .git_sync import Git
 from .pack import Pack, sanitize_actions
-from .records import Record, new_id, now_iso, INPUT, ANALYSIS, TOOL_CALL, PROPOSAL
+from .records import Record, new_id, now_iso, INPUT, ANALYSIS, TOOL_CALL, PROPOSAL, ERROR
+from .run_lock import RunLock
 from .store import Store
 from .targets import Targets
+
+
+BUSY = "another pass (or approve/reject) is running in this deploy - try again when it ends"
 
 
 class Engine:
@@ -30,10 +34,29 @@ class Engine:
         self.model = backends.build(cfg, name)   # routed per kind of call: backends/routed.py
         self.git = Git.from_config(cfg)
         self.targets = Targets.from_config(cfg)
+        # one writer at a time per deploy: a pass, an approve or a reject (run_lock.py)
+        log = cfg.path("log")
+        self._lock = log.with_name(log.name + ".lock")
+        self._stage = ""                # where the current pass is, for a failure record
 
     # --- run-once ----------------------------------------------------------
 
     def run_once(self) -> dict[str, Any]:
+        """One pass under the deploy's run lock. A pass that RAISES leaves an `error`
+        record before the exception propagates: unattended, stderr is read by nobody, and a
+        night of failures must not look like a night with nothing to do."""
+        with RunLock(self._lock) as held:
+            if not held:
+                return {"status": "noop", "busy": True, "reason": BUSY}
+            run_id = new_id("run")
+            self._stage = "capture"
+            try:
+                return self._pass(run_id)
+            except Exception as e:
+                self._record_failure(run_id, e)
+                raise
+
+    def _pass(self, run_id: str) -> dict[str, Any]:
         domain = self.pack.domain
         connector = self.pack.connector
         seen = self.store.seen_snippet_ids(connector.name)
@@ -60,8 +83,6 @@ class Engine:
             return {"status": "noop",
                     "reason": f"pending work ({pending}) but the last run made no progress"}
 
-        run_id = new_id("run")
-
         # (1) Capture — only when something was actually fetched; a pending-work pass
         # captures nothing and must not write an empty input record (the dedup watermark
         # is derived from these).
@@ -83,9 +104,10 @@ class Engine:
         if pending:
             history["pending"] = pending    # tell analyze WHY it was run without new input
 
-        # (3) Analyze (pack builds context + measures metric). A pass that RAISED left its
-        # spans and usage in the backend; they belong to no record, and must not be logged
-        # as this pass's (a REPL session keeps one backend across passes).
+        # (3) Analyze (pack builds context + measures metric). Anything a backend still
+        # holds belongs to no record (a failure record takes its own); it must not be
+        # logged as this pass's - a REPL session keeps one backend across passes.
+        self._stage = "analyze"
         self.model.take_tool_trace()
         self.model.take_usage()
         start = now_iso()
@@ -120,6 +142,7 @@ class Engine:
 
         # (4) Propose — the core sanitizes the model output (never trust it): malformed
         # actions are dropped-but-logged, risk_level/reversible always come from the pack.
+        self._stage = "propose"
         actions, dropped = sanitize_actions(result.get("actions"), self.pack.actions)
         for a in actions:
             a["domain"] = domain
@@ -130,6 +153,7 @@ class Engine:
                                  payload=proposal_payload))
 
         # (5) Gate (per action)
+        self._stage = "gate"
         ran, pending, git_results = [], [], []
         for a in actions:
             # git_recoverable is re-checked per action: after each per-action commit the repo
@@ -156,6 +180,26 @@ class Engine:
                 "usage": usage,
                 "model": model_label, "ran": ran, "pending": pending,
                 "git": git_results}
+
+    def _record_failure(self, run_id: str, error: Exception) -> None:
+        """The failed pass, in the log: where it died, why, and what it had consumed by
+        then (tool reads, tokens) - those were spent, and roi must see them. Writing this
+        record must never mask the original error, so its own failure is swallowed."""
+        try:
+            payload: dict[str, Any] = {"stage": self._stage,
+                                       "error": f"{type(error).__name__}: {error}"[:1000]}
+            usage = self.model.take_usage()
+            if usage:
+                payload["usage"] = usage
+            rec = self.store.append(Record(run_id=run_id, domain=self.pack.domain,
+                                           type=ERROR, payload=payload))
+            for span in self.model.take_tool_trace():
+                self.store.append(Record(run_id=run_id, domain=self.pack.domain,
+                                         type=TOOL_CALL, parent_id=rec.id,
+                                         start_ts=span.pop("start", None),
+                                         end_ts=span.pop("end", None), payload=span))
+        except Exception:  # noqa: BLE001 - the original error is the one to report
+            pass
 
     def _pending_work(self) -> str | None:
         """The pack's optional "the artifact itself needs a pass" signal. A pack that
@@ -206,6 +250,13 @@ class Engine:
         return self.store.proposed_actions().get(action_id)
 
     def _resume(self, action_id: str, verdict: str, by: str, edits: dict | None = None) -> dict[str, Any]:
+        with RunLock(self._lock) as held:
+            if not held:
+                return {"status": "error", "reason": BUSY}
+            return self._decide(action_id, verdict, by, edits)
+
+    def _decide(self, action_id: str, verdict: str, by: str,
+                edits: dict | None) -> dict[str, Any]:
         loc = self._locate(action_id)
         if not loc:
             return {"status": "error", "reason": f"no proposed action {action_id}"}

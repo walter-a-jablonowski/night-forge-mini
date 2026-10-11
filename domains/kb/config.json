@@ -34,6 +34,8 @@
   "connector": { "source": "data/inbox" },
 
   "allow_list": ["add_entry", "flag_contradiction", "mark_stale", "edit_entry"],
+  "_schedule_comment": "run-loop (unattended): interval between ticks (90s / 15m / 1h); until = local HH:MM end, empty = run until Ctrl+C; passes_per_day / tokens_per_day = budget over a rolling 24 h counted from the log, 0 = no limit (a tick over budget is skipped); max_backoff = the longest wait after repeated failures. Command-line --interval / --until / --ticks override.",
+  "schedule": { "interval": "15m", "until": "", "passes_per_day": 0, "tokens_per_day": 0, "max_backoff": "1h" },
   "recent_runs": 5,
   "kb_context_max": 20,
   "_analyze_tool_steps_comment": "agentic analyze: max read_entry tool calls per run; 0 = one-shot",
