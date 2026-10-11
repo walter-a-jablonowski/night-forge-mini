@@ -92,10 +92,13 @@ A pass runs when the connector brings **new input**. Without new input it needs 
 2. or a **metric target** is unmet (`"metric_targets": {"goal_coverage": 8}`; number = at
    least, `{"max": n}` = at most).
 
-The same targets are the stop condition — `run-once` prints `STOP - …` with one of two reasons:
+The same targets are the stop condition — `run-once` prints `STOP - …` with one of three reasons:
 - **goal reached** — every target met on the last recorded metric,
-- **stopped improving** — no targeted metric moved toward its target over the last
-  `convergence_runs` passes (default 3) that had a chance to change something.
+- **stopped improving** — no targeted metric beat its best value over the last
+  `convergence_runs` passes (default 3) that had a chance to change something. Best, not
+  latest: a judged score is noisy, and one low sample must not end the loop.
+- **cannot measure** — a target was not measured in any of the last `convergence_runs`
+  passes (judge key, quota or provider broken): fix the metric, the loop cannot see its goal.
 
 A pass on reason 1 or 2 that changed nothing is not repeated (anti-spin) until new input
 arrives. The metric used is the one recorded by the previous pass (one run stale: measuring

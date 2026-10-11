@@ -66,8 +66,10 @@ State: usable supervised, on a low-stakes artifact. No unattended, and no on any
 - Test run
 
   - When Gemini resets (should we do that or obsolete ?)
-    - [ ] No verified live: the "stopped improving" and "can't measure" stops (tests only), a full analyze pass on Gemini (free quota is 5 requests/min and 20/day per model), and the retry on a passing 400 error.
-  - [ ] Did we check the kb pack as well? Should we?
+    - [x] No verified live: the "stopped improving" and "can't measure" stops (tests only), a full analyze pass on Gemini (free quota is 5 requests/min and 20/day per model), and the retry on a passing 400 error.
+
+- [ ] Did we check the kb pack as well? Should we?
+- [ ] Mistral
 
 - [ ] We may need to improve LLM implementation so that Claude, Gemini and OpenRouter can be used interchangeably as far as possible.
 

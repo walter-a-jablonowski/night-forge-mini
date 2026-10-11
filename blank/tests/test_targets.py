@@ -77,6 +77,27 @@ def test_n_flat_runs_stop_with_stopped_improving():
   assert v.state == 'converged' and v.reason.startswith('stopped improving')
 
 
+def test_one_noisy_low_score_is_not_a_plateau():
+  """Regression, live 2026-10-11: the judge scored 10.0 then 9.0 after a page was added,
+  and comparing only the latest value with one N runs back (9.0 vs 9.0) stopped the loop."""
+  assert targets({'score': 11}, patience=3).check(runs(9, 10, 10, 9)).state == 'unmet'
+
+
+def test_n_runs_without_a_new_best_are_a_plateau():
+  assert targets({'score': 11}, patience=3).check(runs(9, 10, 10, 9, 10)).state == 'converged'
+
+
+def test_one_lucky_high_score_does_not_keep_the_loop_alive():
+  assert targets({'score': 11}, patience=3).check(runs(9, 10, 9, 9, 9)).state == 'converged'
+
+
+def test_at_most_targets_take_the_lowest_value_as_best():
+  hist = runs(5, 2, 3, 4, 3, key='broken')
+  assert targets({'broken': {'max': 0}}, patience=3).check(hist).state == 'converged'
+  hist = runs(5, 4, 3, 2, key='broken')
+  assert targets({'broken': {'max': 0}}, patience=3).check(hist).state == 'unmet'
+
+
 def test_fewer_than_n_flat_runs_are_not_yet_convergence():
   assert targets({'score': 8}, patience=3).check(runs(5, 5, 5)).state == 'unmet'
 

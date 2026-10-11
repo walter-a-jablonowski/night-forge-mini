@@ -55,7 +55,8 @@ sqlite-store, so the storage is designed around its first real consumer.
 
 1. ~~run-when-metric-below-target~~ — DONE 2026-10-10: `metric_targets` trigger + three
    stops (goal reached · stopped improving · cannot measure), live-verified to a
-   "goal reached" stop. [text](v%20done/261010%20-%20run-when-metric-below-target.md)
+   "goal reached" and a "stopped improving" stop; convergence compares best values
+   (judge noise, 2026-10-11). [text](v%20done/261010%20-%20run-when-metric-below-target.md)
 2. scheduler-daemon (S) — the realistic unattended loop; the first candidate second
    writer. [text](backlog/run-triggers/scheduler-daemon.md)
 3. approval-ui (S read-only) — web inbox over the log; the other candidate second writer,

@@ -28,6 +28,17 @@ Found live, fixed the same day:
    which becomes "FINDINGS FROM PAST RUNS". A quota error put ~1,500 chars of provider JSON
    into every later prompt. Now an optional `metric_errors` field on the analyze result is
    recorded on the analysis record and printed by the CLI, and never fed back.
+
+Found live 2026-10-11, fixed the same day:
+3. **Judge noise read as a plateau.** Target 11 (unreachable), judge on gemini-2.5-flash: the
+   score went 10.0 → 9.0 while a page was added, and 9.0 equalled the 9.0 four runs earlier,
+   so "latest vs N runs back" stopped after 2 passes. Now convergence is early-stopping
+   patience: stop when the last N chance-runs did not beat the BEST value before them. One
+   low sample no longer stops the loop; one lucky high one keeps it alive for at most N
+   passes. Pinned as `test_one_noisy_low_score_is_not_a_plateau`.
+
+Live-verified 2026-10-11: the converged stop fires and stays stopped (`try/website`, before
+fix 3, i.e. on the old rule).
 3. The website `WHY YOU ARE RUNNING` line said "from what the site already contains", which
    steers a below-target pass away from research. Now it names the tools.
 
