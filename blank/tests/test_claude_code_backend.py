@@ -160,6 +160,48 @@ def test_an_unavailable_tool_is_not_allow_listed( tmp_path ):
   assert 'web_search' not in b.last_cmd[b.last_cmd.index('--allowedTools') + 1]
 
 
+# --- the schema on the agent turn (interchangeable-llms §2) ------------------
+
+def test_the_proposal_schema_reaches_the_agent_turn( tmp_path ):
+  b = backend(tmp_path, stream(init(), final(PROPOSAL)))
+  schema = {'type': 'object', 'properties': {'finding': {'type': 'string'}}}
+  b.run_tools('sys', 'usr', [read_tool()], schema=schema)
+  assert json.loads(b.last_cmd[b.last_cmd.index('--json-schema') + 1]) == schema
+
+
+def test_the_validated_answer_wins_over_the_text( tmp_path ):
+  """No JSON repair exists on this path: a malformed final text lost the whole pass. With
+  the schema, the CLI validates and hands the object back itself."""
+  done = {'type': 'result', 'result': 'Done - proposal submitted.',
+          'structured_output': {'finding': 'f', 'actions': []}}
+  b = backend(tmp_path, stream(init(), done))
+  assert b.run_tools('sys', 'usr', [read_tool()], schema={'type': 'object'}) == \
+    {'finding': 'f', 'actions': []}
+
+
+def test_the_clis_answer_tool_is_not_logged_as_a_read( tmp_path ):
+  """Live 2026-10-11: the schema answer arrives as a `StructuredOutput` tool call, and was
+  logged as a span beside the real read."""
+  answer = {'type': 'assistant', 'message': {'content': [
+    {'type': 'tool_use', 'id': 't2', 'name': 'StructuredOutput', 'input': {'finding': 'f'}}]}}
+  b = backend(tmp_path, stream(init(), tool_use('t1', 'read_page', {'path': 'a'}),
+                               tool_result('t1', 'x'), answer,
+                               {'type': 'result', 'result': PROPOSAL,
+                                'structured_output': {'finding': 'f', 'actions': []}}))
+  b.run_tools('sys', 'usr', [read_tool()], schema={'type': 'object'})
+  assert [s['tool'] for s in b.take_tool_trace()] == ['read_page']
+
+
+def test_a_failed_agent_turn_raises_with_the_clis_reason( tmp_path ):
+  failed = {'type': 'result', 'is_error': True, 'subtype': 'error_max_structured_output_retries',
+            'result': 'could not produce output matching the schema'}
+  b = backend(tmp_path, stream(init(), tool_use('t1', 'read_page', {'path': 'a'}),
+                               tool_result('t1', 'x'), failed))
+  with pytest.raises(LLMError, match='matching the schema'):
+    b.run_tools('sys', 'usr', [read_tool()], schema={'type': 'object'})
+  assert b.take_tool_trace() == []      # nothing left behind to land in the NEXT run's log
+
+
 # --- the one-shot turn -------------------------------------------------------
 
 def one_shot_reply( **fields ):

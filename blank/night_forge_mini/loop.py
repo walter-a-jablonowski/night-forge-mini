@@ -46,7 +46,8 @@ class Engine:
             # processing what the connector brings is its contract.
             pending = self._pending_work()
             if not pending:
-                verdict = self.targets.check(self.store.metric_runs())
+                verdict = self.targets.check(self.store.metric_runs(),
+                                             setup=self.model.label())
                 if verdict.state in ("met", "blind", "converged"):
                     return {"status": "noop", "stop": verdict.state, "reason": verdict.reason}
                 if verdict.state == "unmet":
@@ -89,12 +90,15 @@ class Engine:
         if not isinstance(result, dict):
             result = {}
         finding = str(result.get("finding") or "")
+        # what answered — the pack names it, else the backend does. Never empty: the metric
+        # targets compare scores only within one setup (a judge's scale is its own)
+        model_label = str(result.get("model") or self.model.label())
         metric_value = result.get("metric") if isinstance(result.get("metric"), dict) else {}
         # a metric that failed to measure is reported beside the finding, not inside it —
         # findings become the next pass's history, an error message must not
         metric_errors = [str(e)[:300] for e in result.get("metric_errors") or []]
         payload = {"finding": finding, "metric": metric_value,
-                   "goal": self.pack.goal, "model": result.get("model", "")}
+                   "goal": self.pack.goal, "model": model_label}
         if metric_errors:
             payload["metric_errors"] = metric_errors
         analysis = self.store.append(Record(run_id=run_id, domain=domain, type=ANALYSIS,
@@ -141,7 +145,7 @@ class Engine:
 
         return {"status": "ok", "run_id": run_id, "captured": len(snippets),
                 "finding": finding, "metric": metric_value, "metric_errors": metric_errors,
-                "model": result.get("model", ""), "ran": ran, "pending": pending,
+                "model": model_label, "ran": ran, "pending": pending,
                 "git": git_results}
 
     def _pending_work(self) -> str | None:

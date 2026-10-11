@@ -24,4 +24,4 @@ failed first.
 
 Also seen, not ours: `503 high demand` (the SDK's default retries + backoff made one probe
 wait > 5 min silently), and free-tier quota of 5 requests/min and 20/day per model. Details in
-`backlog/interchangeable-llms.md`.
+`v done/261011 - interchangeable-llms.md`.

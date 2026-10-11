@@ -19,7 +19,12 @@ exactly one **domain pack** and deploy.
    python -m night_forge_mini approve <id>      # approve a held action
    python -m night_forge_mini reject  <id>      # reject a held action
    python -m night_forge_mini trace   <run_id>  # dump a run as a tree
+   python -m night_forge_mini probe             # do the configured model routes answer?
    ```
+   `probe` makes the two calls a pass depends on (a schema-constrained one-shot, and a
+   one-tool agent loop) with a known answer, per route, and reports what fails: quota,
+   cut-off replies, a provider that rejects structured output. It needs no pack. Run it
+   after changing `backend`, `provider` or `one_shot`.
    Add `--fake-llm` to run the whole loop offline (no API key / no tokens). In the REPL,
    `approve`/`reject` also accept an inbox number (e.g. `approve 1`).
 
@@ -99,6 +104,11 @@ The same targets are the stop condition — `run-once` prints `STOP - …` with 
   latest: a judged score is noisy, and one low sample must not end the loop.
 - **cannot measure** — a target was not measured in any of the last `convergence_runs`
   passes (judge key, quota or provider broken): fix the metric, the loop cannot see its goal.
+
+Scores are compared only under the CURRENT model setup (`backend`, `provider`, `one_shot`
+and their models, as recorded with each run). Judges score on their own scales — the same
+site got 9-10 from Gemini and 8.0 from Claude haiku — so after a change of setup the loop
+starts a fresh series instead of reading the switch as a drop.
 
 A pass on reason 1 or 2 that changed nothing is not repeated (anti-spin) until new input
 arrives. The metric used is the one recorded by the previous pass (one run stale: measuring

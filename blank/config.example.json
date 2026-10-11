@@ -9,7 +9,7 @@
   "one_shot": "",
 
   "provider": "openrouter",
-  "_providers_comment": "each provider optionally takes: timeout (seconds per request, default 120) and max_retries (default 2; SDK backoff on 429/5xx/connection errors). Gemini free tier allows 5 requests/min and one agentic pass makes ~10: set max_retries ~8 there so the SDK waits out the limit instead of failing the pass",
+  "_providers_comment": "each provider optionally takes: timeout (seconds per request, default 120) and max_retries (default 2; SDK backoff on 429/5xx/connection errors), temperature (default 0.2; null = not sent, for models that refuse one), max_tokens (output cap; unset = the provider's default; a reply cut off at it fails the pass with that message instead of a JSON error), retry_transient_400 (default true: retry a 4xx once - right for OpenRouter's per-request routing, one wasted call on a direct provider). Gemini free tier allows 5 requests/min and one agentic pass makes ~10: set max_retries ~8 there so the SDK waits out the limit instead of failing the pass",
   "providers": {
     "openrouter": {
       "base_url": "https://openrouter.ai/api/v1",

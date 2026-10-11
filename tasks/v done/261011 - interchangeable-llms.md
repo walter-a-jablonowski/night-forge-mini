@@ -48,6 +48,19 @@
 
 Still unverified on Gemini: a full analyze pass on the HTTP backend (quota) and the transient-400 retry.
 
+## Status — DONE 2026-10-11
+
+All of §1-5 and §7 built, tested and live-checked the same day (suite 239 passed); §6 was
+"only on demand" and moved to `backlog/anthropic-native-backend.md`. Each section below
+carries its own DONE note. Live checks:
+
+| check | deploy | result |
+|---|---|---|
+| one-shot routed to the CLI (§1) | try/website | judge `claudeCode:haiku`, `goal_coverage=8.0` |
+| schema answer on the CLI agent turn (§2) | try/kb, try/website | `structured_output` present with MCP tools; a full HTML page came through it |
+| setup-keyed series (§7) | try/website | under the new setup only the haiku score counts: the loop RAN instead of stopping |
+| `probe` (§4) | all three | gemini-3 agent ok (tool + echo), gemini-flash judge ok, haiku judge ok; a 429 is reported as a FAIL row |
+
 ## What to change — analysis 2026-10-11
 
 Three ways to reach Claude, and what each needs today:
@@ -100,6 +113,12 @@ one-shot    complete_json   provider          provider  (fixed, cannot be the CL
 - Fix: pass `--json-schema` on the agent turn too (constrained at the source), and/or resume
   the session (`--resume <session_id>` is in the stream) with the JSON-fix prompt.
 
+**DONE 2026-10-11** — the schema option only; resume was not needed. `run_tools` sends
+`--json-schema`, the CLI validates (and retries) itself, and `structured_output` wins over
+the text; an `is_error` result raises with the CLI's reason. The CLI hands that answer back
+as a call to its own `StructuredOutput` tool, which is filtered out of the spans (it is the
+answer, not a read). Live: present with MCP tools on kb and website.
+
 ### 3. Truncated output is not detected — all providers (S)
 - No `max_tokens` is ever sent and `finish_reason` is never read.
 - A website proposal carries whole HTML pages; if it hits the provider's default output cap,
@@ -109,12 +128,26 @@ one-shot    complete_json   provider          provider  (fixed, cannot be the CL
   ("output truncated — raise max_tokens or propose fewer/smaller actions") instead of a
   JSON retry. Pairs with `salvage-partial-model-json.md`.
 
+**DONE 2026-10-11** — `_message()` in `backends/http.py` checks every reply; `finish_reason
+'length'` raises "cut off at its output limit - raise max_tokens …" OUTSIDE the parse retry
+(one call, not three). Per-provider `max_tokens`. Tests prove the old code spent the retry.
+The CLI path is not covered: its output cap is far above a proposal, and a schema answer
+that cannot be produced comes back as `is_error` (§2).
+
 ### 4. A provider probe command (S)
 - "Interchangeable" is only provable per provider, and each live pass so far found a quirk
   (Gemini thought_signature, OpenRouter flaky 400s, Gemini 5 rpm).
 - `python -m night_forge_mini probe`: one `complete_json` with schema + one 2-step
   `run_tools` against the configured route(s); report schema accepted / ignored, tool loop
   ok, state echo ok, latency, finish_reason. Minutes instead of a supervised pass.
+
+**DONE 2026-10-11** — `night_forge_mini/probe.py` + `probe` command (no pack needed). Per
+route: a one-shot with a schema and an agent loop with one `probe_word` tool, each checked
+against a fresh random word. The CLI agent route is reported as not probed: its tools are
+the pack's, served over MCP, so `run-once` is its check. Found on its first live run: haiku
+under `--json-schema` nested a JSON TEMPLATE into the field (`word = '{"word": "x"}'`) —
+the probe prompt now names the field instead; the real judges are safe (`score` is a
+number, `actions` a required array, so the CLI's validation rejects the nesting).
 
 ### 5. Provider quirks as config, not code (XS each)
 - `temperature` is hard-coded 0.2. OpenAI reasoning models (reachable via OpenRouter) reject
@@ -124,7 +157,14 @@ one-shot    complete_json   provider          provider  (fixed, cannot be the CL
   wasted call. → per-provider flag, default on only for openrouter.
 - Gemini free tier: `max_retries ~8` (documented in config.example.json 2026-10-11).
 
+**DONE 2026-10-11** — per-provider `temperature` (null = not sent), `max_tokens`,
+`retry_transient_400`. One deviation: the retry stays ON by default for every provider
+(no behaviour change, no provider sniffing); a direct provider can switch it off.
+
 ### 6. Anthropic via the OpenAI-compatible endpoint — known limits (from Anthropic's docs)
+
+**Moved** to `backlog/anthropic-native-backend.md` (on demand). The probe already reports
+structured output as "ignored by this endpoint" there instead of "native".
 - `response_format` is IGNORED silently: `_schema_ok` becomes True although nothing was
   constrained. The prompts already ask for JSON and the JSON retry covers it, but a probe
   (4) should report "ignored", not "native".
@@ -142,6 +182,12 @@ one-shot    complete_json   provider          provider  (fixed, cannot be the CL
   fresh series (the last-known value for "met" too). Code metrics are unaffected.
 - Until then: after changing `one_shot`, expect one misleading stop; new input or a fresh
   log resets it.
+
+**DONE 2026-10-11** — keyed to the CURRENT setup (`Targets.check(runs, setup=label)`), not
+the last recorded one: otherwise a deploy whose judge was just changed would be stopped by
+the old judge's history, never run, and never record the new one. Applies to every metric
+and to an agent change too, deliberately (a new model deserves its own plateau test). The
+Engine now always records a label (`model.label()` when the pack gives none).
 
 ### Order
 1 (removes the need for a second vendor) → 3 (silent pass loss, every provider) → 2 → 4 → 5.

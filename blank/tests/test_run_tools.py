@@ -1,6 +1,8 @@
 """HttpBackend.run_tools: bounded read-only tool loop ending in a structured proposal."""
 from types import SimpleNamespace
 
+import pytest
+
 from night_forge_mini.backends import LLMError
 from night_forge_mini.backends.http import HttpBackend
 from night_forge_mini.pack import proposal_schema
@@ -17,7 +19,7 @@ def tool_call( name, arguments, id_='tc1', **extra ):
           **extra}
 
 
-def response( content=None, tool_calls=None, **extra ):
+def response( content=None, tool_calls=None, finish=None, **extra ):
   """A REAL `ChatCompletion`, not a stand-in: a stand-in carries only the fields the test
   author thought of, so it can neither hold a provider's extra state nor prove that the
   code reads the object the SDK actually returns (see long-run §7)."""
@@ -27,7 +29,7 @@ def response( content=None, tool_calls=None, **extra ):
     msg['tool_calls'] = tool_calls
   return ChatCompletion.model_validate({
     'id': 'r', 'object': 'chat.completion', 'created': 0, 'model': 'm',
-    'choices': [{'index': 0, 'finish_reason': 'tool_calls' if tool_calls else 'stop',
+    'choices': [{'index': 0, 'finish_reason': finish or ('tool_calls' if tool_calls else 'stop'),
                  'message': msg}]})
 
 
@@ -276,3 +278,64 @@ def test_provider_state_on_the_assistant_turn_is_echoed_back():
   assert turn['tool_calls'][0]['extra_content'] == signature
   assert turn['reasoning_details'] == [{'type': 'reasoning.encrypted', 'data': 'R'}]
   assert turn['content'] == '' and 'annotations' not in turn
+
+
+# --- a reply cut off at the output limit (interchangeable-llms §3) ------------------
+
+def test_a_cut_off_final_answer_is_reported_as_such_not_retried_as_bad_json():
+  """A website proposal carries whole pages. Cut off, it used to read as a FORMAT error,
+  and the retry asked for the same proposal again — which hit the same limit."""
+  w, calls = make_wrapper([response(content='{"finding": "f", "actions": [{"payl',
+                                    finish='length')])
+  with pytest.raises(LLMError, match='cut off.*max_tokens'):
+    w.run_tools('sys', 'usr', tools=[read_tool()], schema=SCHEMA)
+  assert len(calls) == 1
+  assert w.take_tool_trace() == []                       # no json_retry was spent
+
+
+def test_a_cut_off_one_shot_reply_is_reported_without_a_retry():
+  w, calls = make_wrapper([response(content='{"score": 7, "rea', finish='length')])
+  with pytest.raises(LLMError, match='cut off'):
+    w.complete_json('sys', 'usr', schema=SCHEMA)
+  assert len(calls) == 1
+
+
+# --- provider quirks as config (interchangeable-llms §5) --------------------------
+
+def provider_wrapper( responses, **settings ):
+  w, calls = make_wrapper(responses)
+  w.provider = {**PROVIDER, **settings}
+  return w, calls
+
+
+def test_requests_carry_the_default_temperature_and_no_max_tokens():
+  w, calls = provider_wrapper([response(content=REPLY)])
+  w.complete_json('sys', 'usr')
+  assert calls[0]['temperature'] == 0.2 and 'max_tokens' not in calls[0]
+
+
+def test_a_null_temperature_is_not_sent_and_max_tokens_is_on_every_call():
+  """Reasoning models refuse any temperature; their 400 says "not supported", which would
+  also have switched structured output off by mistake."""
+  w, calls = provider_wrapper([response(tool_calls=[tool_call('read_entry', '{"id": "a"}')]),
+                               response(content=REPLY)],
+                              temperature=None, max_tokens=32000)
+  w.run_tools('sys', 'usr', tools=[read_tool()], schema=SCHEMA)
+  assert all('temperature' not in c and c['max_tokens'] == 32000 for c in calls)
+
+
+def test_the_transient_400_retry_can_be_switched_off_for_a_direct_provider():
+  class Upstream(Exception):
+    status_code = 400
+
+  state = {'n': 0}
+
+  def create( **kw ):
+    state['n'] += 1
+    raise Upstream('Provider returned error')
+
+  w = HttpBackend({**PROVIDER, 'retry_transient_400': False})
+  w._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+  with pytest.raises(Upstream):
+    w.run_tools('sys', 'usr', tools=[read_tool()], schema=SCHEMA)
+  assert state['n'] == 1

@@ -1,6 +1,6 @@
 """CLI over the log (idea_2 "Approval interface = CLI over the log").
 
-Commands: run-once · inbox · approve <action_id> · reject <action_id> · trace <run_id>
+Commands: run-once · inbox · approve <action_id> · reject <action_id> · trace <run_id> · probe
 Run with no command (or `shell`) for an interactive REPL session that loads the engine once
 and dispatches the same operations in a loop. Every command prints a readable summary; the
 JSONL log stays the source of truth.
@@ -14,10 +14,11 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import __version__
+from . import __version__, backends
 from .config import load
 from .env import load_dotenv
 from .loop import Engine
+from .probe import probe
 from .records import DECISION, OUTCOME
 
 
@@ -46,8 +47,11 @@ def main(argv: list[str] | None = None) -> int:
     rj = sub.add_parser("reject", help="reject a pending action"); rj.add_argument("action_id")
     tr = sub.add_parser("trace", help="dump a run as a tree"); tr.add_argument("run_id")
     sub.add_parser("shell", help="interactive REPL session (loads the engine once)")
+    sub.add_parser("probe", help="check that the configured model routes answer (no pack needed)")
 
     args = p.parse_args(argv)
+    if args.cmd == "probe":   # the model setup only: works before any pack is dropped in
+        return _probe(args.config, args.fake_llm)
 
     domain_pack = _load_pack()
     if domain_pack is None:
@@ -142,6 +146,23 @@ def _repl(eng: Engine) -> int:
         except Exception as e:  # noqa: BLE001 - show the reason, keep the session alive
             print(f"error: {type(e).__name__}: {e}")
     return 0
+
+
+def _probe(config_path: str, fake_llm: bool) -> int:
+    try:
+        cfg = load(config_path)
+        model = backends.build(cfg, "fake" if fake_llm else str(cfg.get("backend", "http")))
+    except Exception as e:  # noqa: BLE001 - a config error is the answer here
+        print(f"error: {type(e).__name__}: {e}", file=sys.stderr)
+        return 1
+    if model.fake:
+        print("fake backend - nothing to probe")
+        return 0
+    rows = probe(model)
+    for r in rows:
+        mark = {True: "ok", False: "FAIL", None: "--"}[r["ok"]]
+        print(f"{r['role']:<9} {r['label']:<38} {mark:<4} {r['secs']:>5.1f}s  {r['detail']}")
+    return 1 if any(r["ok"] is False for r in rows) else 0
 
 
 def _run_once(eng: Engine) -> int:

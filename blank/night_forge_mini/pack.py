@@ -6,6 +6,8 @@ A pack provides exactly the "four things" (see tasks/resources/v1-blank-sys-and-
   3. analysis     — `(model, *, goal, snippets, history) -> {finding, metric, actions}`
                     (+ optional `metric_errors: [str]` — kept OUT of the finding, which
                     becomes the next pass's history)
+                    (+ optional `model`: return `model.label()` or leave it out — the core
+                    fills it, and metric targets compare scores only under one label)
                     `history` = {findings, metrics, rejections, failures, impact} from past runs
   4. actions      — name -> Action, each carrying honest `risk_level` + `reversible` + `run`
 

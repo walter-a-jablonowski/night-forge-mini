@@ -159,7 +159,8 @@ class Store:
                       if r.type == PROPOSAL and not r.payload.get("actions")}
         return [{"run_id": r.run_id,
                  "metric": r.payload.get("metric") if isinstance(r.payload.get("metric"), dict) else {},
-                 "had_chance": r.run_id in ok_runs or r.run_id in empty_runs}
+                 "had_chance": r.run_id in ok_runs or r.run_id in empty_runs,
+                 "model": str(r.payload.get("model") or "")}
                 for r in recs if r.type == ANALYSIS]
 
     def recent_rejections(self, n: int) -> list[dict]:

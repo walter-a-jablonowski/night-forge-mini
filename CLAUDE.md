@@ -39,6 +39,7 @@ cp -r domains/website/domain_pack/. try/website/domain_pack/
 | tests | `python -m pytest blank/tests domains/website/tests domains/kb/tests -q` |
 | one pass | `python -m night_forge_mini run-once` (from a deploy dir) |
 | offline pass | `python -m night_forge_mini --fake-llm run-once` |
+| check model routes | `python -m night_forge_mini probe` (no pack needed) |
 | held actions | `inbox` · `approve <id>` · `reject <id>` · `trace <run_id>` |
 
 ## Key seams

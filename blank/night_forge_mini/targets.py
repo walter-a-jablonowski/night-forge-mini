@@ -24,6 +24,14 @@ hit its daily quota in two of the three passes. So:
   - and a metric that cannot be measured at all stops the loop after N blind passes rather
     than letting it run on a goal it cannot see.
 
+Scores are compared only WITHIN ONE SETUP (the model label recorded with each run). A judge's
+scale is its own: live 2026-10-11 the same 9-page site scored 9-10 from Gemini and 8.0 from
+Claude haiku, and read as one series the switch alone looked like a drop and stopped the loop
+with "stopped improving". Keyed to the CURRENT setup, not the last recorded one — otherwise a
+deploy whose judge was just changed would be stopped by the old judge's history, never run,
+and so never record the new one. A new agent model restarts the series too, deliberately: it
+deserves its own plateau test.
+
 `met` is checked BEFORE `converged`: a finished artifact plateaus at its ceiling, and it
 must stop with "goal reached", not "stopped improving" — the two call for opposite
 responses from the operator (accept, versus change the goal, the tools or the model).
@@ -87,12 +95,16 @@ class Targets:
         targets = [_parse(key, spec) for key, spec in raw.items()]
         return cls(targets, int(cfg.get("convergence_runs", DEFAULT_PATIENCE)))
 
-    def check(self, runs: list[dict]) -> Verdict:
-        """`runs` = Store.metric_runs(): [{metric, had_chance}], oldest first."""
+    def check(self, runs: list[dict], setup: str | None = None) -> Verdict:
+        """`runs` = Store.metric_runs(): [{metric, had_chance, model}], oldest first.
+        `setup` = the current model label; only runs recorded under it count."""
         if not self.targets:
             return Verdict("none")
+        if setup is not None:
+            runs = [r for r in runs if r.get("model") == setup]
         if not runs:
-            return Verdict("unmet", "no metric recorded yet")
+            return Verdict("unmet", "no metric recorded yet"
+                                    + (f" under {setup}" if setup else ""))
         known = {t.key: v for t in self.targets
                  if (v := _last_measured(runs, t.key)) is not None}
         unmet = [t for t in self.targets if not t.met(known.get(t.key))]

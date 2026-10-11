@@ -6,10 +6,10 @@ prompt and it runs the whole tool loop itself, reaching our tools over MCP
 (`mcp_server.py`) in a second process. So `run_tools` here does not iterate; it starts a
 turn and reads back what happened.
 
-Two calls, two shapes:
+Two calls, two shapes, both constrained by the CLI's `--json-schema` when given a schema:
   run_tools      the agentic analyze pass: a stream-json turn with our MCP server
   complete_json  a one-shot call (an LLM-judged metric, one-shot analyze): a turn with NO
-                 tools and no MCP server, constrained by the CLI's `--json-schema`
+                 tools and no MCP server
 
 Whether a deploy's one-shot calls come HERE is a routing choice (`one_shot` in config, see
 backends/routed.py): a judge turn costs a process spawn (~6.5 s measured on haiku), so a
@@ -35,6 +35,9 @@ from .base import LLMError, _extract_json
 
 MCP_NAME = "nfm"                     # how our server is named to the CLI
 MCP_PREFIX = f"mcp__{MCP_NAME}__"    # how the CLI namespaces our tool names
+# how the CLI hands back a `--json-schema` answer: as a call to its own tool. That is the
+# final answer, not a read, and logging it would count a tool call the pass never made
+ANSWER_TOOL = "StructuredOutput"
 
 
 class ClaudeCodeBackend:
@@ -77,7 +80,8 @@ class ClaudeCodeBackend:
                            "does not fail, it invents — so the turn is refused instead.")
         bounds = {"max_calls": max_steps, "result_cap": result_cap,
                   "result_budget": result_budget}
-        out, code, err = self._run(self._command(names, system, bounds), user, self.timeout)
+        out, code, err = self._run(self._command(names, system, bounds, schema), user,
+                                   self.timeout)
         turn = self._parse(out)
 
         if not turn["connected"]:
@@ -86,11 +90,18 @@ class ClaudeCodeBackend:
                 "connected, so nothing in an answer would come from this deploy. The tool "
                 f"server starts as: {self._server_cmd} "
                 f"(exit {code}){' - ' + err.strip()[:300] if err.strip() else ''}")
-        if turn["text"] == "":
+        if turn["error"]:
+            raise LLMError(f"the Claude Code turn failed: {turn['text'][:300]}")
+        if turn["text"] == "" and turn["structured"] is None:
             raise LLMError(f"the Claude Code CLI returned nothing (exit {code})"
                            f"{' - ' + err.strip()[:300] if err.strip() else ''}")
 
         self._tool_trace.extend(turn["spans"])
+        # The schema-validated answer. The HTTP backend repairs a reply that will not parse
+        # by sending the error back; here there was no repair, and one malformed answer lost
+        # the whole pass, tool reads included — so the CLI validates (and retries) instead.
+        if isinstance(turn["structured"], dict):
+            return turn["structured"]
         return _extract_json(turn["text"])
 
     def complete_json(self, system: str, user: str,
@@ -122,7 +133,8 @@ class ClaudeCodeBackend:
     # -- the process -----------------------------------------------------------
 
     def _command(self, allowed: list[str], system: str,
-                 bounds: dict[str, int] | None = None) -> list[str]:
+                 bounds: dict[str, int] | None = None,
+                 schema: dict | None = None) -> list[str]:
         """The argument list. Passed as a LIST so the executable starts directly — no
         shell, no quoting rules to get wrong.
 
@@ -146,6 +158,8 @@ class ClaudeCodeBackend:
                "--system-prompt", system]
         if allowed:
             cmd += ["--allowedTools", ",".join(allowed)]
+        if schema is not None:
+            cmd += ["--json-schema", json.dumps(schema, ensure_ascii=False)]
         if self.model:
             cmd += ["--model", self.model]
         return cmd
@@ -214,7 +228,7 @@ class ClaudeCodeBackend:
         rest (banner, usage records, rate-limit events)."""
         spans: list[dict] = []
         pending: dict[str, dict] = {}      # tool_use id -> its span, awaiting the result
-        text, connected = "", False
+        text, connected, structured, error = "", False, None, False
         stamp = now_iso()                  # the stream carries no per-event timestamps
 
         for line in out.splitlines():
@@ -234,7 +248,8 @@ class ClaudeCodeBackend:
                                 for s in msg.get("mcp_servers") or [])
             elif kind == "assistant":
                 for block in (msg.get("message") or {}).get("content") or []:
-                    if isinstance(block, dict) and block.get("type") == "tool_use":
+                    if (isinstance(block, dict) and block.get("type") == "tool_use"
+                            and block.get("name") != ANSWER_TOOL):
                         span = {"tool": _plain(str(block.get("name") or "")),
                                 "args": block.get("input") if isinstance(block.get("input"), dict) else {},
                                 "status": "ok", "chars": 0,
@@ -256,8 +271,11 @@ class ClaudeCodeBackend:
                             span["detail"] = body[:200]
             elif kind == "result":
                 text = str(msg.get("result") or "")
+                structured = msg.get("structured_output")
+                error = bool(msg.get("is_error"))
 
-        return {"text": text, "spans": spans, "connected": connected}
+        return {"text": text, "spans": spans, "connected": connected,
+                "structured": structured, "error": error}
 
 
 def _plain(name: str) -> str:

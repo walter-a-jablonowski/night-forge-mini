@@ -77,9 +77,7 @@ class HttpBackend:
                               "parameters": t.params or {"type": "object", "properties": {}}}}
                 for t in usable.values()]
         for _ in range(max_steps):
-            resp = self._create(model=self.provider["model"], messages=messages,
-                                temperature=0.2, tools=defs)
-            msg = resp.choices[0].message
+            msg = _message(self._create(**self._params(), messages=messages, tools=defs))
             calls = getattr(msg, "tool_calls", None)
             if not calls:  # model is done reading -> its answer is the proposal
                 content = msg.content or ""
@@ -112,18 +110,40 @@ class HttpBackend:
         agentic loop's own call had no handling at all.
 
         A 4xx that blames a PARAMETER is not retried — resending it would fail the same
-        way; that case is the caller's to handle by sending less."""
+        way; that case is the caller's to handle by sending less. A provider that serves
+        every request itself gains nothing from the retry: `retry_transient_400: false`."""
         client = self._ensure_client()
         try:
             return client.chat.completions.create(**kwargs)
         except Exception as e:  # noqa: BLE001 - re-raised unless it is worth one retry
-            if not _client_refused(e) or _param_rejected(e):
+            if (not _client_refused(e) or _param_rejected(e)
+                    or not self.provider.get("retry_transient_400", True)):
                 raise
             ts = now_iso()
             self._tool_trace.append({"tool": "provider_retry", "args": {}, "status": "error",
                                      "chars": 0, "start": ts, "end": ts,
                                      "detail": str(e)[:200]})
             return client.chat.completions.create(**kwargs)
+
+    @property
+    def schema_ok(self) -> bool | None:
+        """Did the provider take `response_format: json_schema`? None = not tried yet."""
+        return self._schema_ok
+
+    def _params(self) -> dict[str, Any]:
+        """The per-provider request parameters every call carries.
+
+        temperature: 0.2 unless configured; null = not sent, for models that refuse any
+        value (OpenAI reasoning models via OpenRouter). max_tokens: sent only when
+        configured — the provider's default cap applies otherwise, and `_message` reports
+        when a reply hit it."""
+        params: dict[str, Any] = {"model": self.provider["model"]}
+        temperature = self.provider.get("temperature", 0.2)
+        if temperature is not None:
+            params["temperature"] = temperature
+        if self.provider.get("max_tokens"):
+            params["max_tokens"] = int(self.provider["max_tokens"])
+        return params
 
     def take_tool_trace(self) -> list[dict]:
         """Return and clear the spans of the tool calls made since the last take."""
@@ -208,8 +228,7 @@ class HttpBackend:
 
     def _raw_json_reply(self, messages: list[dict], schema: dict | None) -> str:
         """The model call itself: structured output when the provider accepts it."""
-        kwargs: dict[str, Any] = {"model": self.provider["model"], "messages": messages,
-                                  "temperature": 0.2}
+        kwargs: dict[str, Any] = {**self._params(), "messages": messages}
         if schema is not None and self._schema_ok is not False:
             try:
                 resp = self._create(
@@ -217,7 +236,7 @@ class HttpBackend:
                     response_format={"type": "json_schema",
                                      "json_schema": {"name": "proposal", "schema": schema}})
                 self._schema_ok = True
-                return resp.choices[0].message.content or ""
+                return _message(resp).content or ""
             except Exception as e:
                 if not _client_refused(e):
                     raise
@@ -229,8 +248,7 @@ class HttpBackend:
                 if _param_rejected(e):
                     self._schema_ok = False
 
-        resp = self._create(**kwargs)
-        return resp.choices[0].message.content or ""
+        return _message(self._create(**kwargs)).content or ""
 
     def _trace_json_retry(self, error: Exception) -> None:
         """A retry is an extra model call inside the analyze step, so it belongs in the
@@ -262,6 +280,21 @@ class HttpBackend:
 
 def _messages(system: str, user: str) -> list[dict]:
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _message(resp):
+    """The reply message — refused when the provider CUT IT OFF at its output limit.
+
+    A truncated reply is not a format error, and must not be handled as one: the JSON
+    retry asks for "the SAME proposal again", which hits the same limit, so a website pass
+    (whole HTML pages inside the JSON) would spend three calls and still be lost, with a
+    parse error that hides the cause. Raised outside the parse retry, with the remedy."""
+    choice = resp.choices[0]
+    if getattr(choice, "finish_reason", None) == "length":
+        raise LLMError("the model's reply was cut off at its output limit (finish_reason "
+                       "'length') - raise max_tokens for this provider in config, or have "
+                       "the pass propose fewer or smaller actions")
+    return choice.message
 
 
 # response-only metadata a request's assistant message does not accept

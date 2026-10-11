@@ -22,7 +22,7 @@ its spans worth exporting.
 
 ## 2. One-shot analyze silently uses the HTTP provider
 
-**Resolved 2026-10-11 by routing** (`interchangeable-llms.md` §1): `one_shot: claudeCode`
+**Resolved 2026-10-11 by routing** (`v done/261011 - interchangeable-llms.md` §1): `one_shot: claudeCode`
 sends one-shot analyze to the CLI, and the run record's model label now names the one-shot
 route whenever it differs (`claudeCode:sonnet + one-shot gemini:…`), so it is no longer
 silent. Kept below for the reasoning.
@@ -59,3 +59,13 @@ not know how many tool steps a typical pass spends on the CLI versus the HTTP ba
 is what would tell us whether an unattended daemon is safe. The `tool_call` spans are already
 in the log; it is a counting script, not a feature. Do this before `scheduler-daemon`, along
 with the stop condition in `run-when-metric-below-target.md`.
+
+## 6. An action called as a tool is refused by the CLI, not by us
+Seen in 3 of 9 website passes (2026-10-10/11): the agent calls `create_page` /
+`edit_content` as if they were tools, WITH the full page as an argument. The CLI answers
+"No such tool available" and the model then puts the action in its answer correctly — so
+nothing breaks, but the step costs a whole page of output. On the HTTP path our own loop
+answers such a call with a pointer ("put it in the actions array", `_run_tool`); here the
+call never reaches our MCP server, so that pointer cannot be given. Options: say it in the
+system prompt for this backend, or list the action names as tools the server refuses with
+the pointer. Measure first (§5) — it is a cost, not a correctness, problem.

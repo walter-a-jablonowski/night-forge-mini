@@ -124,6 +124,33 @@ def test_runs_that_had_no_chance_are_not_evidence_of_convergence():
   assert targets({'score': 8}, patience=3).check(hist).state == 'unmet'
 
 
+def judged( *pairs ):
+  return [{'metric': {'score': v}, 'had_chance': True, 'model': m} for m, v in pairs]
+
+
+def test_scores_from_another_judge_are_not_compared():
+  """Regression, live 2026-10-11: Gemini judged the site 9-10, Claude haiku 8.0. Read as one
+  series, the switch alone looked like a drop and stopped the loop."""
+  hist = judged(('gemini', 9), ('gemini', 10), ('gemini', 10), ('gemini', 9), ('haiku', 8))
+  assert targets({'score': 11}).check(hist).state == 'converged'               # mixed
+  v = targets({'score': 11}).check(hist, setup='haiku')
+  assert v.state == 'unmet' and 'score=8' in v.reason
+
+
+def test_a_changed_setup_is_not_stopped_by_the_old_ones_history():
+  """Keyed to the CURRENT setup: the old judge's plateau must not keep the new one from
+  ever running (and so from ever recording a score)."""
+  hist = judged(*[('gemini', 9)] * 5)
+  assert targets({'score': 11}).check(hist, setup='gemini').state == 'converged'
+  v = targets({'score': 11}).check(hist, setup='haiku')
+  assert v.state == 'unmet' and 'no metric recorded yet under haiku' in v.reason
+
+
+def test_a_setup_used_again_keeps_its_own_history():
+  hist = judged(('a', 5), ('a', 5), ('b', 9), ('a', 5), ('a', 5))
+  assert targets({'score': 8}).check(hist, setup='a').state == 'converged'
+
+
 @pytest.mark.parametrize('bad', ['high', {'min': 'x'}, {'min': 1, 'max': 2}, {'avg': 3}, True])
 def test_a_malformed_target_is_a_clear_config_error( bad ):
   with pytest.raises(ValueError, match='metric_targets.score'):
@@ -202,6 +229,15 @@ def test_new_input_still_runs_after_the_goal_is_reached( tmp_path ):
   assert eng.run_once()['stop'] == 'met'
   inbox.items.append({'id': 's2', 'text': 'y', 'source': 'x'})
   assert eng.run_once()['captured'] == 1
+
+
+def test_the_engine_records_the_setup_when_the_pack_does_not( tmp_path ):
+  """Never empty: an unlabelled run would belong to no setup, and targets would never
+  see a score again."""
+  eng, inbox, _ = make_engine(tmp_path, [3])
+  inbox.items.append({'id': 's1', 'text': 'x', 'source': 'x'})
+  assert eng.run_once()['model'] == 'fake-llm'
+  assert eng.store.metric_runs()[0]['model'] == 'fake-llm'
 
 
 def test_a_metric_run_that_changed_nothing_does_not_spin( tmp_path ):
