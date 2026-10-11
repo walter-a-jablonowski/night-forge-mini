@@ -84,7 +84,25 @@ Our goal is: close relevant implementation gaps that block usage (if any) and ma
 
   ---
 
-  To run it for real tonight: python -m night_forge_mini run-loop --until 07:00 in a deploy folder, with the output redirected to a file. Then run report --since 12h in the morning.
+  **When the computer can stay on for a few hours**, run this in each deploy folder (e.g. `try/kb`, `try/website`), one terminal each:
+
+  ```
+  python -m night_forge_mini run-loop --until 18:00 > run-loop.log 2>&1
+  ```
+
+  Then, at any time during or after the run:
+
+  ```
+  python -m night_forge_mini report --since 8h
+  ```
+
+  **Worth doing before or during the run:**
+  - **kb:** drop a few notes into `data/inbox/` while it runs. That's the real input path; without new input the kb loop just idles.
+  - **website:** with the haiku judge it stops itself after about one pass (plateau around 8.0 against a target of 9.5). For more passes, lower `metric_targets.goal_coverage` in `try/website/config.json` to about 8.5, or switch the judge back to Gemini (`one_shot: ""`).
+  - **Optional:** set a budget in the deploy's `config.json`, e.g. `"schedule": {"passes_per_day": 20}`. It's a deliberate safety cap for the first long run.
+  - **If the computer sleeps mid-run:** the pass in progress dies. Its actions are held for approval, never half-run, and the lock releases itself. Approve them with `inbox` and `approve`, then restart `run-loop`.
+
+  **Afterwards, send me the `report` output** (or just say "check the run"). I'll go through failed passes, held actions, cost and stops. Every live run so far has found something, so I expect this one will too.
 
 - maybe general test and error checks with stronger model
   - [ ] Let 5.5 check the system
