@@ -3,8 +3,10 @@
 
   "_backend_comment": "HOW a model is reached. \"http\" (default) is every OpenAI-compatible provider below; --fake-llm selects the offline backend. claudeCode runs the analyze pass on your own Claude Code subscription (no api key) - see the claudeCode block below.",
   "backend": "http",
-  "_claudeCode_comment": "Agent-CLI backend (backend: claudeCode): runs the analyze pass on your own Claude Code subscription instead of an api key, reaching this deploy's tools over MCP. bin empty = claude from PATH; model empty = the CLI default (e.g. opus | sonnet); timeout is seconds for the whole turn - it runs the entire tool loop. One-shot calls (an LLM-judged metric) still go to the provider below, which must stay configured.",
-  "claudeCode": { "bin": "", "model": "", "timeout": 600 },
+  "_claudeCode_comment": "Agent-CLI backend (backend: claudeCode): runs the analyze pass on your own Claude Code subscription instead of an api key, reaching this deploy's tools over MCP. bin empty = claude from PATH; model empty = the CLI default (e.g. opus | sonnet); timeout is seconds for the whole turn - it runs the entire tool loop. oneShotModel: the model for one-shot calls routed to the CLI (see one_shot); empty = model.",
+  "claudeCode": { "bin": "", "model": "", "oneShotModel": "", "timeout": 600 },
+  "_one_shot_comment": "WHERE one-shot calls go (an LLM-judged metric; analyze when analyze_tool_steps is 0) - routed apart from the agentic analyze pass, which goes to backend. A key of providers = that HTTP provider; claudeCode = the CLI on your subscription (--json-schema, ~6 s per call, no api key). Empty = provider when one is configured, else the backend itself - so a claudeCode deploy without any provider needs no api key at all.",
+  "one_shot": "",
 
   "provider": "openrouter",
   "_providers_comment": "each provider optionally takes: timeout (seconds per request, default 120) and max_retries (default 2; SDK backoff on 429/5xx/connection errors). Gemini free tier allows 5 requests/min and one agentic pass makes ~10: set max_retries ~8 there so the SDK waits out the limit instead of failing the pass",

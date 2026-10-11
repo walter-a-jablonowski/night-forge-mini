@@ -71,9 +71,11 @@ State: usable supervised, on a low-stakes artifact. No unattended, and no on any
 - [ ] Did we check the kb pack as well? Should we?
 - [ ] Mistral
 
-- [ ] We may need to improve LLM implementation so that Claude, Gemini and OpenRouter can be used interchangeably as far as possible.
+- [ ] We may need to improve LLM implementation so that Claude, Gemini and OpenRouter can be used interchangeable as far as possible.
 
-  From my side questions: see tasks/backlog
+Questions that I asked Claude about this: see tasks/backlog/interchangeable-llms.md
+
+Please find out what we might have to change.
 
 - [ ] next useful steps
   - claude-code-backend-refinements §5 (count the tool calls a pass makes) before any scheduler-daemon

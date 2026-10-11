@@ -34,8 +34,8 @@ release that makes the last two legible and pays off their loose ends.
 3. analyze-context-amplification (S-M) — **unblocked**: lever 1 waited for the backend
    seam, which has landed. 20-35% measured on the HTTP path; levers 2+3 are done.
    [text](backlog/analyze-context-amplification.md)
-4. claude-code-backend-refinements (S each) — per-tool span timestamps (needed by 1), the
-   one-shot/HTTP combination, measuring a turn's cost (feeds 2).
+4. claude-code-backend-refinements (S each) — per-tool span timestamps (needed by 1),
+   measuring a turn's cost (feeds 2). The one-shot/HTTP combination is resolved by routing.
    [text](backlog/claude-code-backend-refinements.md)
 5. salvage-partial-model-json (S) — when every JSON retry fails, keep what parsed instead
    of losing a pass whose tool budget is already spent.
@@ -49,6 +49,10 @@ release that makes the last two legible and pays off their loose ends.
    step/result bounds and the repeat-read guard. [text](v%20done/261010%20-%20claude-code-pass-bounds.md)
 9. ~~http-tool-loop-provider-state~~ — DONE 2026-10-10, found live: no agentic pass could
    run on Gemini 3 (thought_signature dropped). [text](v%20done/261010%20-%20http-tool-loop-provider-state.md)
+10. interchangeable-llms (S each left) — §1 one-shot routing DONE 2026-10-11 (`one_shot`:
+    a provider or claudeCode; subscription-only deploys need no api key). Left: truncation
+    detection, JSON repair on the CLI path, a provider probe, quirks as config, and the
+    judge-switch scale mix (found live). [text](backlog/interchangeable-llms.md)
 
 **0.4.0 — unattended operation.** The first second-writer feature together with
 sqlite-store, so the storage is designed around its first real consumer.

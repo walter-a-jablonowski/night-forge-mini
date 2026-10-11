@@ -6,13 +6,14 @@ prompt and it runs the whole tool loop itself, reaching our tools over MCP
 (`mcp_server.py`) in a second process. So `run_tools` here does not iterate; it starts a
 turn and reads back what happened.
 
-Two roles, one object (see the Decisions section of tasks/backlog/claude-code-backend.md):
-  run_tools      the agentic analyze pass -> the CLI
-  complete_json  a one-shot call, e.g. an LLM-judged metric -> the cheap HTTP provider
+Two calls, two shapes:
+  run_tools      the agentic analyze pass: a stream-json turn with our MCP server
+  complete_json  a one-shot call (an LLM-judged metric, one-shot analyze): a turn with NO
+                 tools and no MCP server, constrained by the CLI's `--json-schema`
 
-A judge metric is a single small call returning one number; paying a process spawn plus an
-MCP handshake for it is disproportionate, and the CLI has no structured-output parameter to
-constrain it with. The split falls exactly on the two methods, so no pack changes.
+Whether a deploy's one-shot calls come HERE is a routing choice (`one_shot` in config, see
+backends/routed.py): a judge turn costs a process spawn (~6.5 s measured on haiku), so a
+cheap HTTP provider is still the default when one is configured.
 
 CAUTION, the failure that matters: when the tools do not load, the agent does not fail — it
 ANSWERS, from an artifact it invents, and the reply looks normal. So a turn is REFUSED
@@ -41,13 +42,13 @@ class ClaudeCodeBackend:
 
     fake = False
 
-    def __init__(self, cfg, one_shot=None, runner=None):
+    def __init__(self, cfg, model: str | None = None, runner=None):
         self._block = block = cfg.get("claudeCode") or {}
         self.deploy = str(getattr(cfg, "root", "") or os.getcwd())
         self.bin = str(block.get("bin") or "claude")
-        self.model = str(block.get("model") or "")
+        # `model` overrides the block's: the one-shot route may run a smaller one
+        self.model = str(model or block.get("model") or "")
         self.timeout = int(block.get("timeout") or 300)
-        self._one_shot = one_shot            # the cheap backend for judge-style calls
         self._run = runner or _run_cli       # injectable so the parser is testable
         self._tool_trace: list[dict] = []
         self._server_cmd = ""              # resolved per turn; named in the refusal
@@ -94,12 +95,22 @@ class ClaudeCodeBackend:
 
     def complete_json(self, system: str, user: str,
                       schema: dict | None = None) -> dict[str, Any]:
-        if self._one_shot is None:
-            raise LLMError(
-                "no one-shot backend configured for the Claude Code backend: a single "
-                "small call (an LLM-judged metric) should go to a cheap provider, not a "
-                "CLI turn. Configure `providers` + `provider` alongside `backend`.")
-        return self._one_shot.complete_json(system, user, schema)
+        """One CLI turn without tools. With a schema the CLI validates the answer itself
+        and hands it back as `structured_output`; without one the reply text is parsed
+        the tolerant way, like any other backend's."""
+        out, code, err = self._run(self._one_shot_command(system, schema), user, self.timeout)
+        try:
+            reply = json.loads(out)
+        except ValueError:
+            reply = None
+        if not isinstance(reply, dict):
+            raise LLMError(f"the Claude Code CLI gave no result (exit {code})"
+                           f"{' - ' + err.strip()[:300] if err.strip() else ''}")
+        if reply.get("is_error"):
+            raise LLMError(f"the Claude Code CLI failed: {str(reply.get('result') or '')[:300]}")
+        if isinstance(reply.get("structured_output"), dict):
+            return reply["structured_output"]
+        return _extract_json(str(reply.get("result") or ""))
 
     def take_tool_trace(self) -> list[dict]:
         trace, self._tool_trace = self._tool_trace, []
@@ -135,6 +146,20 @@ class ClaudeCodeBackend:
                "--system-prompt", system]
         if allowed:
             cmd += ["--allowedTools", ",".join(allowed)]
+        if self.model:
+            cmd += ["--model", self.model]
+        return cmd
+
+    def _one_shot_command(self, system: str, schema: dict | None) -> list[str]:
+        """A one-shot turn: the same isolation as `_command`, and NO tool server — an empty
+        strict MCP config, so not even a server the user configured globally is reachable.
+        Plain `json` output: there are no tool calls to log, only the result."""
+        cmd = [self.bin, "-p", "--output-format", "json",
+               "--setting-sources", "", "--tools", "",
+               "--mcp-config", json.dumps({"mcpServers": {}}), "--strict-mcp-config",
+               "--system-prompt", system]
+        if schema is not None:
+            cmd += ["--json-schema", json.dumps(schema, ensure_ascii=False)]
         if self.model:
             cmd += ["--model", self.model]
         return cmd

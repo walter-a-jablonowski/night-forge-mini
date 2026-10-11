@@ -1,7 +1,7 @@
 """ClaudeCodeBackend: the agent CLI turn, parsed back into our shape.
 
 The CLI is driven through an injected runner, so everything here — the invented-answer
-guard, the span translation, the role split — is verified without spawning anything.
+guard, the span translation, the one-shot turn — is verified without spawning anything.
 """
 import json
 
@@ -47,9 +47,9 @@ def final( text ):
   return {'type': 'result', 'result': text}
 
 
-def backend( tmp_path, out, code=0, err='', one_shot=None, **block ):
+def backend( tmp_path, out, code=0, err='', **block ):
   runner = lambda cmd, prompt, timeout: (out, code, err)
-  b = ClaudeCodeBackend(cfg(tmp_path, **block), one_shot=one_shot, runner=runner)
+  b = ClaudeCodeBackend(cfg(tmp_path, **block), runner=runner)
   b.last_cmd = None
   def spy( cmd, prompt, timeout ):
     b.last_cmd, b.last_prompt = cmd, prompt
@@ -160,25 +160,51 @@ def test_an_unavailable_tool_is_not_allow_listed( tmp_path ):
   assert 'web_search' not in b.last_cmd[b.last_cmd.index('--allowedTools') + 1]
 
 
-# --- the role split ---------------------------------------------------------
+# --- the one-shot turn -------------------------------------------------------
 
-def test_a_one_shot_call_goes_to_the_cheap_backend_not_a_cli_turn( tmp_path ):
-  """A judged metric is one small call returning a number; a process spawn plus an MCP
-  handshake for it is disproportionate, and the CLI cannot constrain it with a schema."""
-  class Cheap:
-    def complete_json( self, system, user, schema=None ):
-      return {'score': 7}
-
-  b = backend(tmp_path, stream(init(), final(PROPOSAL)), one_shot=Cheap())
-  assert b.complete_json('sys', 'usr')['score'] == 7
-  assert b.last_cmd is None                            # the CLI was never started
+def one_shot_reply( **fields ):
+  return json.dumps({'type': 'result', 'subtype': 'success', 'is_error': False, **fields})
 
 
-def test_a_one_shot_call_without_a_cheap_backend_says_what_to_configure( tmp_path ):
-  b = backend(tmp_path, stream(init(), final(PROPOSAL)))
-  with pytest.raises(LLMError) as e:
-    b.complete_json('sys', 'usr')
-  assert 'provider' in str(e.value)
+SCORE = {'type': 'object', 'properties': {'score': {'type': 'number'}}, 'required': ['score']}
+
+
+def test_a_one_shot_call_is_a_turn_with_no_tools_constrained_by_the_schema( tmp_path ):
+  """Measured 2026-10-11: `--json-schema` hands the validated object back as
+  `structured_output`, so a judge can run on the subscription."""
+  b = backend(tmp_path, one_shot_reply(result='{"score":7}', structured_output={'score': 7}))
+  assert b.complete_json('judge sys', 'site', schema=SCORE) == {'score': 7}
+  cmd = b.last_cmd
+  assert json.loads(cmd[cmd.index('--json-schema') + 1]) == SCORE
+  assert cmd[cmd.index('--output-format') + 1] == 'json'
+  assert json.loads(cmd[cmd.index('--mcp-config') + 1]) == {'mcpServers': {}}
+  assert '--strict-mcp-config' in cmd and '--allowedTools' not in cmd
+  assert cmd[cmd.index('--tools') + 1] == ''
+  assert cmd[cmd.index('--system-prompt') + 1] == 'judge sys' and b.last_prompt == 'site'
+
+
+def test_a_one_shot_call_without_a_schema_parses_the_reply_text( tmp_path ):
+  b = backend(tmp_path, one_shot_reply(result='Here: {"score": 4}'))
+  assert b.complete_json('s', 'u') == {'score': 4}
+  assert '--json-schema' not in b.last_cmd
+
+
+def test_a_failed_one_shot_turn_raises_with_the_clis_reason( tmp_path ):
+  b = backend(tmp_path, one_shot_reply(is_error=True, result='There is an issue with the '
+                                       'selected model (nope).'), code=1)
+  with pytest.raises(LLMError, match='selected model'):
+    b.complete_json('s', 'u', schema=SCORE)
+
+
+def test_a_one_shot_turn_with_no_result_reports_exit_code_and_stderr( tmp_path ):
+  b = backend(tmp_path, '', code=2, err='boom')
+  with pytest.raises(LLMError, match='exit 2.*boom'):
+    b.complete_json('s', 'u')
+
+
+def test_a_model_given_to_the_backend_overrides_the_block( tmp_path ):
+  b = ClaudeCodeBackend(cfg(tmp_path, model='sonnet'), model='haiku')
+  assert b.label() == 'claudeCode:haiku'
 
 
 def test_label_names_the_backend_and_model( tmp_path ):

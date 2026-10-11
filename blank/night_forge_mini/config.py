@@ -45,9 +45,14 @@ class Config:
         """Resolve a path relative to the config file's directory (the deploy root)."""
         return (self.root / relpath).resolve()
 
-    def provider(self) -> dict[str, Any]:
-        name = self.raw["provider"]
-        p = dict(self.raw["providers"][name])
+    def provider(self, name: str | None = None) -> dict[str, Any]:
+        """One entry of `providers` — the configured `provider` unless named."""
+        name = name or self.raw.get("provider")
+        providers = self.raw.get("providers") or {}
+        if name not in providers:
+            raise ValueError(f"config: provider {name!r} is not a key of providers "
+                             f"(known: {', '.join(providers) or 'none'})")
+        p = dict(providers[name])
         p["name"] = name
         return p
 

@@ -21,6 +21,12 @@ Pairs with `observability.md`: a stream-json turn is already a trace, and this i
 its spans worth exporting.
 
 ## 2. One-shot analyze silently uses the HTTP provider
+
+**Resolved 2026-10-11 by routing** (`interchangeable-llms.md` §1): `one_shot: claudeCode`
+sends one-shot analyze to the CLI, and the run record's model label now names the one-shot
+route whenever it differs (`claudeCode:sonnet + one-shot gemini:…`), so it is no longer
+silent. Kept below for the reasoning.
+
 The analyze/judge split falls on the two protocol methods — `run_tools` goes to the CLI,
 `complete_json` to the cheap provider. That is right for a judged metric, but it means a
 deploy with `analyze_tool_steps: 0` would run its **analyze** through `complete_json` and so

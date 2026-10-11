@@ -27,11 +27,7 @@ class Engine:
         # mode. A pack asks `model.fake` before spending a call and answers offline
         # itself — see backends/base.py.
         name = "fake" if fake_llm else str(cfg.get("backend", "http"))
-        build = backends.get(name)
-        if build is None:
-            raise ValueError(f"config: unknown backend {name!r} "
-                             f"(known: {', '.join(backends.names())})")
-        self.model = build(cfg)
+        self.model = backends.build(cfg, name)   # routed per kind of call: backends/routed.py
         self.git = Git.from_config(cfg)
         self.targets = Targets.from_config(cfg)
 
