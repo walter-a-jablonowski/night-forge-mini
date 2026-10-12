@@ -24,6 +24,21 @@ Also live: a manual `run-once` during a loop pass was refused (run lock); all th
 ended on their own; `report --since 70m` reproduced each night from the log; no held
 actions, artifact repos clean.
 
+First real unattended run 2026-10-12, 08:31-15:00 (6.5 h), both deploys on Claude Code (sonnet
+agent), started detached (`Start-Process cmd /c ... > run-loop.log`), `--until 15:00`, budget
+16 / 20 passes per day; kb input drip-fed by a helper moving one note into the inbox every 40 min:
+
+| deploy | ticks | ran / failed / idle | what happened |
+|---|---|---|---|
+| website (CLI + opus judge, target 9.0) | 26 | 1 / 0 / 25 | one pass (+1 page, 1 edit, $0.12); the judge scored 9.0 -> `STOP - goal reached` from the next tick (first live sighting of that stop) |
+| kb (CLI) | 26 | 8 / 0 / 18 | each note handled on the next tick: 2 add_entry, 3 edit_entry (sources merged), 1 flag_contradiction (75 vs 50 EUR), the duplicate and an outdated note correctly left alone; $0.10 |
+
+No failed pass, nothing held, both loops ended at `--until`, artifact repos clean, ~$0.22
+list price for the day. Not covered: the CLI at its usage limit (never reached) and backoff
+on the CLI path (nothing failed; seen live on HTTP above). Found while preparing: records
+written before the judge was part of the setup label (`claudeCode:sonnet`, Gemini-judged)
+would be inherited by a sonnet judge -> `try/website` judges with opus.
+
 Pending-notification (held actions piling up unseen) is not built: `report` and the end
 summary of `run-loop` show the held count; push notification stays with `approval-ui`.
 
