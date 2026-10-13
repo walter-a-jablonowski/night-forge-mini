@@ -21,6 +21,7 @@ from .config import load
 from .env import load_dotenv
 from .backends.base import add_usage
 from .loop import Engine
+from .notify import Notifier
 from .probe import probe
 from .scheduler import Schedule, Scheduler, seconds
 from .records import DECISION, ERROR, OUTCOME
@@ -256,8 +257,13 @@ def _run_loop(eng: Engine, cfg, args) -> int:
             print(f"skipped - {e['reason']}")
         else:
             _show_pass(e["result"])
+        if e.get("notify"):
+            print(e["notify"])
 
-    s = Scheduler(eng, schedule, on_tick).run()
+    notifier = Notifier.from_config(cfg)
+    if notifier:
+        print(f"notify: {notifier.command}")
+    s = Scheduler(eng, schedule, on_tick, notifier=notifier).run()
     print(f"\nrun-loop ended ({s['stopped']}): {s['ticks']} tick(s) - {s['ran']} ran, "
           f"{s['failed']} failed, {s['noop']} idle, {s['skipped']} skipped")
     held = len(eng.store.pending_actions())

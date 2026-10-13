@@ -51,6 +51,8 @@ Next
 The blank system plus pne domain pack is merged in a new folder to get a running system.
 ```
 
+Misc
+
 - [x] Make nice CLI [text](v%20done/260621%20-%20interactive-cli.md) — DONE (S): interactive REPL (`python -m night_forge_mini` / `shell`); run/inbox/approve/reject/trace, approve by inbox #. M (edit-before-approve + streaming) remains.
   - [ ] try
 
@@ -60,24 +62,26 @@ The blank system plus pne domain pack is merged in a new folder to get a running
     - [text](backlog/claude-code-backend-refinements.md)
     - maybe [text](backlog/analyze-context-amplification.md)
 
-State: unattended works (0.4.0). A 6.5 h real run on website + kb had no failed passes and nothing held. Not yet seen live: the Claude CLI at its usage limit.
+Unattended run
 
 Our goal is: close relevant implementation gaps that block usage (if any) and make test rounds until the system runs. We can do optional features from backlog later, important ones might be done now.
 
-- see [text](backlog.md)
+State: unattended works (0.4.0). A 6.5 h real run on website + kb had no failed passes and nothing held. Not yet seen live: the Claude CLI at its usage limit.
+
+- mazbe see [text](backlog.md)
+
+- [ ] First unattended run: iteratively optimized healthy nutrition page
+  - Ingredients
+  - Simple meals
+    - fast to make (sample: put in a boal, heat up, ready)
+    - good combinations of ingredients (nutrients) per meal
+    - only if possible: cheap, price is lower priority
 
 - maybe general test and error checks with stronger model
   - [ ] Let 5.5 check the system
   - [ ] Test run looking for errors?
 - [ ] Make some usage overview: started in Readme
 - [ ] has nice /tasks setup with CLAUDE.md rules, move
-
-- [ ] First page that the model could simple healthy nutrition
-  - Ingredients
-  - Simple meals
-    - fast to make (sample: put in a boal, heat up, ready)
-    - good combinations of ingredients (nutrients) per meal
-    - cheap (only if possible, price is lower priority)
 
 
 Advanced

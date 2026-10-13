@@ -50,8 +50,8 @@ release that makes the last two legible and pays off their loose ends.
     OpenAI-compatible endpoint ignores structured output and has no prompt caching.
     [text](backlog/anthropic-native-backend.md)
 
-**0.4.0 — unattended operation.** `__version__` = 0.4.0 since 2026-10-13: items 1-4
-shipped and passed a 6.5 h real unattended run (2026-10-12). Items 5-8 land as 0.4.x. The
+**0.4.0 — unattended operation.** `__version__` = 0.4.0 since 2026-10-13: items 1-5
+shipped; 1-4 passed a 6.5 h real unattended run (2026-10-12). Items 6-9 land as 0.4.x. The
 first second-writer feature (approval-ui) comes together with sqlite-store, so the storage
 is designed around its first real consumer. The MCP server reports `__version__`.
 
@@ -66,15 +66,18 @@ is designed around its first real consumer. The MCP server reports `__version__`
 4. ~~scheduler-daemon~~ — DONE 2026-10-11: `run-loop` (interval, backoff, 24 h budget,
    `--until`) + `report`; live unattended round on three deploys.
    [text](v%20done/261011%20-%20scheduler-daemon.md)
-5. approval-ui (S read-only) — web inbox over the log; the other candidate second writer,
+5. ~~notify-hook~~ — DONE 2026-10-13: `notify.command` runs when actions are held, passes
+   keep failing or the budget is spent (once per condition). Split out of approval-ui.
+   [text](v%20done/261013%20-%20notify-hook.md)
+6. approval-ui (S read-only) — web inbox over the log; the other candidate second writer,
    and it lowers the cost of keeping a human at the gate. Matters most for the website
    pack (diffs for overwrite/delete). [text](backlog/approval-ui.md)
-6. sqlite-store (M) — pulled in by approval-ui (a second process writing while a pass runs);
+7. sqlite-store (M) — pulled in by approval-ui (a second process writing while a pass runs);
    the daemon did not need it, the run lock serializes writers per deploy.
    [text](backlog/sqlite-store.md)
-7. filesystem-watch (S) — event-driven trigger; fits the KB folder.
+8. filesystem-watch (S) — event-driven trigger; fits the KB folder.
    [text](backlog/run-triggers/filesystem-watch.md)
-8. data-governance (S first step) — scoped read-only creds per connector, and now a second
+9. data-governance (S first step) — scoped read-only creds per connector, and now a second
    credential KIND: a subscription-backed backend has no api key at all. Unattended running
    is what makes this urgent. [text](backlog/data-governance.md)
 
@@ -127,4 +130,4 @@ website-analyze-prompt-tools · write-actions-accept-wrong-file-shape ·
 json-parse-failures-must-be-retryable · website-action-precondition-confusion (no fix
 needed) · claude-code-backend · kb-pack-tests · claude-code-pass-bounds ·
 http-tool-loop-provider-state · run-when-metric-below-target · kb-edit-provenance ·
-interchangeable-llms · failed-pass-record · run-lock · scheduler-daemon
+interchangeable-llms · failed-pass-record · run-lock · scheduler-daemon · notify-hook

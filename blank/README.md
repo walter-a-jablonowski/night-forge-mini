@@ -136,8 +136,15 @@ python -m night_forge_mini report --since 12h            # the morning view
   The lock dies with its process, so a killed pass leaves nothing stale behind.
 - **A failed pass is in the log** (`error` record: stage, reason, what it had spent), so a
   night of failures does not look like a night with nothing to do.
+- **notify** pushes what `report` only answers when asked: `notify.command` runs when a pass
+  leaves actions held, after `after_failures` failed passes in a row, or when the daily budget
+  runs out — each condition once, not every tick. The event arrives as environment variables
+  (`NFM_EVENT`, `NFM_MESSAGE`, `NFM_DEPLOY`); use them as variables, never splice them into
+  the command text. A Windows popup:
+  `powershell -NoProfile -Command "msg $env:USERNAME $env:NFM_MESSAGE"`.
+  Worth having even with everything allow-listed: a dirty git repo makes every edit hold.
 - Without run-loop, an OS scheduler works too: Task Scheduler / cron calling `run-once` gets
-  the same lock and failure records (but no backoff and no budget). Redirect the output to a
+  the same lock and failure records (but no backoff, no budget and no notify). Redirect the output to a
   file either way; the log is the record, the output is the narrative.
 
 ## Optional: git versioning of the materialized artifacts

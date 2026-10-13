@@ -13,6 +13,8 @@ What the wrapper adds is what only an unattended loop needs:
   budget    passes and tokens per rolling 24 h, counted from the log (usage on analysis and
             error records), so a restarted loop sees what the last one spent
   until     a wall-clock end ("07:00") — the night ends even if nobody is up to end it
+  notify    the operator's command when a human is needed: actions held, a failure
+            streak, the budget spent (notify.py) — `report` only answers when asked
 
 Nothing here runs a pass itself or prints: `tick` events go to a callback, so the CLI owns
 the output and tests can drive a whole night with a fake clock.
@@ -73,10 +75,11 @@ class Schedule:
 class Scheduler:
     def __init__(self, engine, schedule: Schedule, on_tick: Callable[[dict], None],
                  now: Callable[[], datetime] = datetime.now,
-                 sleep: Callable[[float], None] = time.sleep):
+                 sleep: Callable[[float], None] = time.sleep, notifier=None):
         self.engine = engine
         self.schedule = schedule
         self.on_tick = on_tick
+        self.notifier = notifier
         self.now = now
         self.sleep = sleep
 
@@ -98,6 +101,8 @@ class Scheduler:
                 event = self._tick(summary["ticks"])
                 summary[event["kind"]] += 1
                 failures = failures + 1 if event["kind"] == "failed" else 0
+                if self.notifier:
+                    event["notify"] = self.notifier.observe(event)
                 self.on_tick(event)
                 wait = s.interval if not failures else \
                     min(s.interval * 2 ** failures, max(s.interval, s.max_backoff))

@@ -23,3 +23,8 @@ is the same seam.
 (M) → multi-user, auth, Slack/API approvers (M, pairs with data-governance RBAC).
 
 **Effort:** S (read-only) → M (full review + edit).
+
+**Already split out (2026-10-13):** the push notification for `run-loop` — held actions,
+failure streaks, spent budget — is the operator's own command, see
+[notify-hook](../v%20done/261013%20-%20notify-hook.md). What stays here: the inbox itself,
+ready-made chat/mail channels, approving from the message.

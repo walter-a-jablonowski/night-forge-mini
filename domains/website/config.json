@@ -69,6 +69,8 @@
   "allow_list": ["create_page", "add_asset", "edit_content", "change_design", "remove_page"],
   "_schedule_comment": "run-loop (unattended): interval between ticks (90s / 15m / 1h); until = local HH:MM end, empty = run until Ctrl+C; passes_per_day / tokens_per_day = budget over a rolling 24 h counted from the log, 0 = no limit (a tick over budget is skipped); max_backoff = the longest wait after repeated failures. Command-line --interval / --until / --ticks override.",
   "schedule": { "interval": "15m", "until": "", "passes_per_day": 0, "tokens_per_day": 0, "max_backoff": "1h" },
+  "_notify_comment": "run-loop only: a shell command run when the loop needs a human - a pass left actions held, after_failures passes failed in a row, or the daily budget ran out; each told once, not every tick. It gets NFM_EVENT (held | failing | budget), NFM_MESSAGE and NFM_DEPLOY as environment variables - read them as variables, never paste them into the command text (the message quotes model output). Empty = off. Windows popup: powershell -NoProfile -Command \"msg $env:USERNAME $env:NFM_MESSAGE\" · Linux: notify-send night-forge \"$NFM_MESSAGE\"",
+  "notify": { "command": "", "after_failures": 3 },
   "recent_runs": 5,
   "_metric_targets_comment": "When the loop is DONE. With no new input, a pass runs while any target is unmet, and the loop STOPS with 'goal reached' once all are met, or with 'stopped improving' when no targeted metric beat its best value in the last convergence_runs passes. number = at least; {\"max\": n} = at most. New input always runs. Empty = input-driven only (the old behaviour). A judge metric that fails to measure counts as not met.",
   "metric_targets": { "goal_coverage": 8 },

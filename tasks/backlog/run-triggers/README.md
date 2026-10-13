@@ -23,7 +23,8 @@ unattended event, and human-driven session. The last three are **access surfaces
 A non-interactive trigger (daemon, watcher, webhook) changes the risk profile:
 allow-listed actions auto-run with **no human watching**, and held/`pending` actions **pile
 up unseen**. Any unattended trigger therefore needs:
-1. a **notification/escalation path** for pending actions (Slack/email/the `approval-ui` inbox), and
+1. a **notification/escalation path** for pending actions (Slack/email/the `approval-ui` inbox) —
+   for `run-loop` this exists: [notify-hook](../../v%20done/261013%20-%20notify-hook.md), and
 2. trust in the `allow_list` (default-deny still holds; see `../autonomous-actions.md`).
 
 Don't ship a silent unattended trigger without (1) — that's how the loop quietly stalls on
