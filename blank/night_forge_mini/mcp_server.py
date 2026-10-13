@@ -21,11 +21,12 @@ import json
 import sys
 from typing import Any, TextIO
 
+from . import __version__
 from .tools.pass_budget import RESULT_BUDGET, RESULT_CAP, PassBudget
 from .tools.registry import Tool
 
 PROTOCOL_VERSION = "2025-06-18"     # used only when the client names none
-SERVER_INFO = {"name": "night-forge-mini", "version": "0.3.0"}
+SERVER_INFO = {"name": "night-forge-mini", "version": __version__}
 
 
 def tool_defs(tools: list[Tool]) -> list[dict]:

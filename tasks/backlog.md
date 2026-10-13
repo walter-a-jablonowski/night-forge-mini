@@ -1,12 +1,4 @@
 
-Not placed below
-
-- `__version__` still says 0.2.3, so the last two releases are unnumbered in code. Decide
-  whether the Claude Code release is 0.3.1 or 0.4.0 before cutting it — bookkeeping, not a
-  backlog item.
-- `mcp_server.py` reports its own version as "0.3.0" to MCP clients; keep it in step with
-  `__version__` whichever number is chosen.
-
 Version, then the tasks that make it up, each in priority order (effort in parens).
 Reorganised 2026-09-11 after the Claude Code backend.
 
@@ -58,8 +50,10 @@ release that makes the last two legible and pays off their loose ends.
     OpenAI-compatible endpoint ignores structured output and has no prompt caching.
     [text](backlog/anthropic-native-backend.md)
 
-**0.4.0 — unattended operation.** The first second-writer feature together with
-sqlite-store, so the storage is designed around its first real consumer.
+**0.4.0 — unattended operation.** `__version__` = 0.4.0 since 2026-10-13: items 1-4
+shipped and passed a 6.5 h real unattended run (2026-10-12). Items 5-8 land as 0.4.x. The
+first second-writer feature (approval-ui) comes together with sqlite-store, so the storage
+is designed around its first real consumer. The MCP server reports `__version__`.
 
 1. ~~run-when-metric-below-target~~ — DONE 2026-10-10: `metric_targets` trigger + three
    stops (goal reached · stopped improving · cannot measure), live-verified to a

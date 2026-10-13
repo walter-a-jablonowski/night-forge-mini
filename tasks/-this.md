@@ -60,17 +60,45 @@ The blank system plus pne domain pack is merged in a new folder to get a running
     - [text](backlog/claude-code-backend-refinements.md)
     - maybe [text](backlog/analyze-context-amplification.md)
 
-State: usable supervised, on a low-stakes artifact. No unattended, and no on anything you'd mind being wrong
-       The guards are genuinely good — but the reason I trust them less than the count suggests is that every single live run found a new hole
+State: unattended works (0.4.0). A 6.5 h real run on website + kb had no failed passes and nothing held. Not yet seen live: the Claude CLI at its usage limit.
+
+Our goal is: close relevant implementation gaps that block usage (if any) and make test rounds until the system runs. We can do optional features from backlog later, important ones might be done now.
+
+- see [text](backlog.md)
+
+- maybe general test and error checks with stronger model
+  - [ ] Let 5.5 check the system
+  - [ ] Test run looking for errors?
+- [ ] Make some usage overview: started in Readme
+- [ ] has nice /tasks setup with CLAUDE.md rules, move
+
+- [ ] First page that the model could simple healthy nutrition
+  - Ingredients
+  - Simple meals
+    - fast to make (sample: put in a boal, heat up, ready)
+    - good combinations of ingredients (nutrients) per meal
+    - cheap (only if possible, price is lower priority)
+
+
+Advanced
+----------------------------------------------------------
+
+- Wahlweise Aktionen als file only, check at end, then run later
+- Anything weak in /backlog? Needs improvement?
+- [ ] Add stuff like [text](v%20done/260621%20-%20domain-pack-template.md)
+
+
+Done
+----------------------------------------------------------
+
+### 2026-10-13
 
 - [x] next useful steps:
   - claude-code-backend-refinements §5 (count the tool calls a pass makes) before any scheduler-daemon
 
-Our goal is: close relevant implementation gaps that block usage (if any) and make test rounds until the system runs. We can do optional features from backlog later, important ones might be done now.
-
 - [x] What from the back should we do for that? Or is there something else that we need to add to the backlog?
 
-- [ ] Gaps that block unattended use
+- [x] Gaps that block unattended use
 
   | #   | gap                                     | in backlog?                                     | why it blocks                                                                                                                                                                                                                                              |
   | --- | --------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -95,41 +123,7 @@ Our goal is: close relevant implementation gaps that block usage (if any) and ma
   ```
   python -m night_forge_mini report --since 8h
   ```
-
-  **Worth doing before or during the run:**
-  - **kb:** drop a few notes into `data/inbox/` while it runs. That's the real input path; without new input the kb loop just idles.
-  - **website:** with the haiku judge it stops itself after about one pass (plateau around 8.0 against a target of 9.5). For more passes, lower `metric_targets.goal_coverage` in `try/website/config.json` to about 8.5, or switch the judge back to Gemini (`one_shot: ""`).
-  - **Optional:** set a budget in the deploy's `config.json`, e.g. `"schedule": {"passes_per_day": 20}`. It's a deliberate safety cap for the first long run.
-  - **If the computer sleeps mid-run:** the pass in progress dies. Its actions are held for approval, never half-run, and the lock releases itself. Approve them with `inbox` and `approve`, then restart `run-loop`.
-
   **Afterwards, send me the `report` output** (or just say "check the run"). I'll go through failed passes, held actions, cost and stops. Every live run so far has found something, so I expect this one will too.
-
-- maybe general test and error checks with stronger model
-  - [ ] Let 5.5 check the system
-  - [ ] Test run looking for errors?
-- [ ] Make some usage overview: started in Readme
-- [ ] has nice /tasks setup with CLAUDE.md rules, move
-
-- see [text](backlog.md)
-
-- [ ] First page that the model could simple healthy nutrition
-  - Ingredients
-  - Simple meals
-    - fast to make (sample: put in a boal, heat up, ready)
-    - good combinations of ingredients (nutrients) per meal
-    - cheap (only if possible, price is lower priority)
-
-
-Advanced
-----------------------------------------------------------
-
-- Wahlweise Aktionen als file only, check at end, then run later
-- Anything weak in /backlog? Needs improvement?
-- [ ] Add stuff like [text](v%20done/260621%20-%20domain-pack-template.md)
-
-
-Done
-----------------------------------------------------------
 
 ### 2026-10-11
 
